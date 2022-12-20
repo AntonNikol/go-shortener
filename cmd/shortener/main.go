@@ -14,8 +14,8 @@ var items []Item
 var host = "http://localhost:8080/"
 
 type Item struct {
-	FullUrl  string `json:"full_url"`
-	ShortUrl string `json:"short_url"`
+	FullURL  string `json:"full_url"`
+	ShortURL string `json:"short_url"`
 }
 
 func main() {
@@ -31,8 +31,8 @@ func main() {
 func getItem(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	for _, item := range items {
-		if item.ShortUrl == params["id"] {
-			w.Header().Set("Location", item.FullUrl)
+		if item.ShortURL == params["id"] {
+			w.Header().Set("Location", item.FullURL)
 			w.WriteHeader(http.StatusTemporaryRedirect)
 			w.Write([]byte(""))
 			return
@@ -54,14 +54,14 @@ func createItem(w http.ResponseWriter, r *http.Request) {
 	randomString = randomString[:6]
 
 	item := Item{
-		FullUrl:  string(body),
-		ShortUrl: randomString,
+		FullURL:  string(body),
+		ShortURL: randomString,
 	}
 	items = append(items, item)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(host + item.ShortUrl))
+	w.Write([]byte(host + item.ShortURL))
 }
 
 func getItems(w http.ResponseWriter, r *http.Request) {
