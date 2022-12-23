@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"io"
 	"log"
@@ -11,6 +12,7 @@ import (
 )
 
 var items []Item
+
 var host = "http://localhost:8080/"
 
 type Item struct {
@@ -30,12 +32,21 @@ func main() {
 // Получение полной ссылки по сокращенной ссылке
 func getItem(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
+
 	for _, item := range items {
+		fmt.Printf("количество элелементов items: %d \n", len(items))
+
+		fmt.Printf("item.ShortURL = %s, id = %s \n", item.ShortURL, params["id"])
 		if item.ShortURL == params["id"] {
+			//http.Error(w, "Ссылка НАЙДЕНА", http.StatusNotFound)
+			//return
+
+			fmt.Printf("условие проверки выполняется, возвращаем ответ\n")
 			w.Header().Set("Location", item.FullURL)
 			w.WriteHeader(http.StatusTemporaryRedirect)
-			w.Write([]byte(""))
+			w.Write([]byte("Готово! \n" + item.FullURL))
 			return
+
 		}
 	}
 
