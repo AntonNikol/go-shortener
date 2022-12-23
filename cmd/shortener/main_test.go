@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -104,7 +105,7 @@ func Test_getItem(t *testing.T) {
 			name: "Тест получения полной ссылки",
 			url:  shortUrl,
 			want: want{
-				statusCode:  200,
+				statusCode:  307,
 				contentType: "text/plain; charset=utf-8",
 			},
 		},
@@ -114,9 +115,16 @@ func Test_getItem(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, shortUrl, nil)
+			client := &http.Client{}
+			client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 1 {
+					return errors.New("Остановлено после Redirect")
+				}
+				return nil
+			}
 
-			requestDump, err := httputil.DumpRequest(request, false)
+			request := httptest.NewRequest(http.MethodGet, shortUrl, nil)
+			requestDump, err := httputil.DumpRequestOut(request, false)
 			if err != nil {
 				panic(err)
 			}
@@ -130,6 +138,15 @@ func Test_getItem(t *testing.T) {
 			// запускаем сервер
 			h.ServeHTTP(w, request)
 			result := w.Result()
+
+			redirectUrl, err := result.Location()
+
+			t.Logf("redirectUrl %s", redirectUrl)
+
+			//result, err := client.Get(shortUrl)
+			//if err != nil {
+			//	t.Fatal(err.Error())
+			//}
 
 			t.Logf("Лог ответа Test_getItem %v", result)
 
