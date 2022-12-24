@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo/v4"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -13,71 +10,59 @@ import (
 
 var items []Item
 
-var host = "http://localhost:8080/"
+var host = "http://localhost:8080"
 
 type Item struct {
 	FullURL  string `json:"full_url"`
 	ShortURL string `json:"short_url"`
+	Id       string
 }
 
 func main() {
-	r := mux.NewRouter()
-	r.HandleFunc("/", createItem).Methods("POST")
-	r.HandleFunc("/", getItems).Methods("GET")
-	r.HandleFunc("/{id}", getItem).Methods("GET")
+	e := echo.New() // Routes
+	e.GET("/:id", getItem)
+	e.POST("/", createItem)
 
-	log.Fatal(http.ListenAndServe(":8080", r))
+	// Start server
+	e.Logger.Fatal(e.Start(":8080"))
 }
 
-// Получение полной ссылки по сокращенной ссылке
-func getItem(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
+func createItem(c echo.Context) error {
+	defer c.Request().Body.Close()
 
-	for _, item := range items {
-		fmt.Printf("количество элелементов items: %d \n", len(items))
-
-		fmt.Printf("item.ShortURL = %s, id = %s \n", item.ShortURL, params["id"])
-		if item.ShortURL == params["id"] {
-			//http.Error(w, "Ссылка НАЙДЕНА", http.StatusNotFound)
-			//return
-
-			fmt.Printf("условие проверки выполняется, возвращаем ответ\n")
-			w.Header().Set("Location", item.FullURL)
-			w.WriteHeader(http.StatusTemporaryRedirect)
-			w.Write([]byte("Готово! \n" + item.FullURL))
-			return
-
-		}
+	if c.Request().Body == nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "body обязательно")
 	}
 
-	http.Error(w, "Ссылка не найдена", http.StatusNotFound)
-}
-
-// Сокращение ссылки
-func createItem(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	body, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
+
 	randomString := strconv.Itoa(rand.Int())
 	randomString = randomString[:6]
 
 	item := Item{
 		FullURL:  string(body),
-		ShortURL: randomString,
+		ShortURL: host + "/" + randomString,
+		Id:       randomString,
 	}
 	items = append(items, item)
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(host + item.ShortURL))
+	return c.String(http.StatusCreated, item.ShortURL)
 }
 
-func getItems(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(items)
+func getItem(c echo.Context) error {
+	id := c.Param("id")
+
+	for _, item := range items {
+		if item.Id == id {
+			c.Response().Header().Set("Location", item.FullURL)
+
+			return c.String(http.StatusTemporaryRedirect, item.FullURL)
+		}
+	}
+	return c.String(404, "Ссылка не найдена")
 }
 
 //TODO:
