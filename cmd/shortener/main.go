@@ -15,7 +15,7 @@ var host = "http://localhost:8080"
 type Item struct {
 	FullURL  string `json:"full_url"`
 	ShortURL string `json:"short_url"`
-	Id       string
+	ID       string
 }
 
 func main() {
@@ -30,14 +30,19 @@ func main() {
 func createItem(c echo.Context) error {
 	defer c.Request().Body.Close()
 
-	if c.Request().Body == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "body обязательно")
-	}
+	//if c.Request().Body == nil {
+	//	return echo.NewHTTPError(http.StatusBadRequest, "body обязательно")
+	//}
 
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
+
+	//_, err = url.ParseRequestURI(string(body))
+	//if err != nil {
+	//	echo.NewHTTPError(http.StatusBadRequest, "В body должен быть url")
+	//}
 
 	randomString := strconv.Itoa(rand.Int())
 	randomString = randomString[:6]
@@ -45,7 +50,7 @@ func createItem(c echo.Context) error {
 	item := Item{
 		FullURL:  string(body),
 		ShortURL: host + "/" + randomString,
-		Id:       randomString,
+		ID:       randomString,
 	}
 	items = append(items, item)
 
@@ -56,7 +61,7 @@ func getItem(c echo.Context) error {
 	id := c.Param("id")
 
 	for _, item := range items {
-		if item.Id == id {
+		if item.ID == id {
 			c.Response().Header().Set("Location", item.FullURL)
 
 			return c.String(http.StatusTemporaryRedirect, item.FullURL)
