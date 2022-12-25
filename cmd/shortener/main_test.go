@@ -15,7 +15,6 @@ import (
 type TestItem struct {
 	FullURL  string
 	ShortURL string
-	Id       string
 }
 
 // Слайс для тестов получения редиректа по сокращенной ссылке
