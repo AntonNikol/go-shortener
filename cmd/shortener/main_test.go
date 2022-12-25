@@ -9,10 +9,12 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"testing"
 )
 
 const testUrl = "https://practicum.yandex.ru/"
+const testUrl2 = "https://www.google.com/search?q=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&oq=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&aqs=chrome..69i57j0i10i512.3638j0j15&sourceid=chrome&ie=UTF-8"
 
 var shortUrl string
 
@@ -30,8 +32,16 @@ func Test_createItem(t *testing.T) {
 		want want
 	}{
 		{
-			name: "Тест сохранения сокращенной ссылки",
+			name: "Обычная ссылка",
 			body: []byte(testUrl),
+			want: want{
+				statusCode:  201,
+				contentType: "text/plain; charset=UTF-8",
+			},
+		},
+		{
+			name: "Длинная ссылка",
+			body: []byte(testUrl2),
 			want: want{
 				statusCode:  201,
 				contentType: "text/plain; charset=UTF-8",
@@ -39,10 +49,8 @@ func Test_createItem(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for index, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			// Setup
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer(tt.body))
 			rec := httptest.NewRecorder()
@@ -54,28 +62,31 @@ func Test_createItem(t *testing.T) {
 			}
 			t.Logf("Лог HTTP запроса Test_getItem %s", requestDump)
 
-			// Assertions
+			// Проверки
 			if assert.NoError(t, createItem(c)) {
 				assert.Equal(t, tt.want.statusCode, rec.Code)
 				assert.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
-				// проверяем body
+				// Получаем body ответа
 				responseBody := rec.Body.String()
-				t.Logf("Тесты пройдены %s", responseBody)
+				t.Logf("Ответ сервера %s", responseBody)
 
-				// проверка, что в ответе url
+				// Проверка, что в ответе url
 				_, err = url.ParseRequestURI(string(responseBody))
 				if err != nil {
 					panic(err)
 				}
 				require.NoError(t, err)
 
-				// проверка, что элемент добавлен в слайс items
-				assert.Equal(t, len(items), 1)
+				// Проверка слайса items
+				assert.Equal(t, len(items), index+1)
 
-				// получаем сокращенный url и пишем в переменную
-				shortUrl = string(responseBody)
+				// Получаем сокращенный url и пишем в переменную
+				shortUrl = responseBody
 			}
+
+			t.Logf("Итого элементов в слайсе items %d", len(items))
+
 		})
 	}
 }
@@ -94,17 +105,25 @@ func Test_getItem(t *testing.T) {
 		want want
 	}{
 		{
-			name: "Тест получения полной ссылки",
+			name: "Тест получения обычной ссылки",
 			url:  shortUrl,
 			want: want{
 				statusCode: 307,
-				location:   testUrl,
+				location:   testUrl2,
 			},
 		},
+		//{
+		//	name: "Тест получения длинной ссылки",
+		//	url:  shortUrl,
+		//	want: want{
+		//		statusCode: 307,
+		//		location:   testUrl2,
+		//	},
+		//},
 	}
 
-	t.Logf("Значение переменной shortUrl %s", shortUrl)
-	t.Logf("Значение переменной testUrl %s", testUrl)
+	//t.Logf("Значение переменной shortUrl %s", shortUrl)
+	//t.Logf("Значение переменной testUrl2 %s", testUrl2)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -115,7 +134,15 @@ func Test_getItem(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.SetPath("/:id")
 			c.SetParamNames("id")
-			c.SetParamValues("557700")
+
+			split := strings.Split(shortUrl, "/")
+			splitLen := len(split)
+			id := split[splitLen-1]
+
+			t.Logf("Значение переменной split %s", split)
+			t.Logf("Значение переменной id %s", id)
+
+			c.SetParamValues(id)
 
 			requestDump, err := httputil.DumpRequest(req, true)
 			if err != nil {
