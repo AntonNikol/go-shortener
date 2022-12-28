@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,9 +18,6 @@ type TestItem struct {
 	FullURL  string
 	ShortURL string
 }
-
-// Слайс для тестов получения редиректа по сокращенной ссылке
-var testItems []TestItem
 
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
@@ -55,7 +51,7 @@ func Test_createItem(t *testing.T) {
 		},
 	}
 
-	for index, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.body)))
@@ -74,18 +70,6 @@ func Test_createItem(t *testing.T) {
 				// Проверка, что в ответе url
 				_, err := url.ParseRequestURI(responseBody)
 				require.NoError(t, err)
-
-				// Проверка слайса items
-
-				//TODO: почему-то len (items) возвращает 0 и далее тесты не падают
-				//assert.Equal(t, index+1, len(items))
-				fmt.Println(index)
-
-				// Получаем сокращенный url заполняем слайс testItems
-				testItems = append(testItems, TestItem{
-					FullURL:  tt.body,
-					ShortURL: responseBody,
-				})
 			}
 		})
 	}
