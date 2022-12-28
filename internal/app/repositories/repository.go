@@ -14,7 +14,7 @@ func (r Repository) AddItem(item models.Item) (models.Item, error) {
 	return r.repo.AddItem(item)
 }
 
-func (r Repository) GetItemById(id string) (models.Item, error) {
-	res, err := r.repo.GetItemById(id)
+func (r Repository) GetItemByID(id string) (models.Item, error) {
+	res, err := r.repo.GetItemByID(id)
 	return res, err
 }

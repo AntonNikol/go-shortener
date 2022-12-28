@@ -65,7 +65,7 @@ func CreateItem(c echo.Context) error {
 func GetItem(c echo.Context) error {
 	id := c.Param("id")
 
-	item, err := repo.GetItemById(id)
+	item, err := repo.GetItemByID(id)
 	if err != nil {
 		return c.String(404, "Ссылка не найдена")
 	}
