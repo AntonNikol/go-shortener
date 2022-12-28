@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/AntonNikol/go-shortener/internal/app/handlers"
-	"github.com/labstack/echo/v4"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/AntonNikol/go-shortener/internal/app/handlers"
+	"github.com/labstack/echo/v4"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type TestItem struct {
@@ -86,8 +87,6 @@ func Test_createItem(t *testing.T) {
 					ShortURL: responseBody,
 				})
 			}
-			//t.Logf("Итого элементов в слайсе items %d", len(handlers.items))
-			//t.Logf("Итого элементов в слайсе testItems %d", len(testItems))
 		})
 	}
 }
@@ -102,48 +101,50 @@ func Test_getItem(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		ShortURL string
-		want     want
+		name string
+		want want
 	}{
 		{
-			name:     "Тест получения обычной ссылки",
-			ShortURL: testItems[0].ShortURL,
+			name: "Тест получения обычной ссылки",
 			want: want{
 				statusCode: 307,
-				location:   testItems[0].FullURL,
+				location:   "https://practicum.yandex.ru/",
 			},
 		},
 		{
-			name:     "Тест получения длинной ссылки",
-			ShortURL: testItems[1].ShortURL,
+			name: "Тест получения длинной ссылки",
 			want: want{
 				statusCode: 307,
-				location:   testItems[1].FullURL,
+				location:   "https://www.google.com/search?q=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&oq=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&aqs=chrome..69i57j0i10i512.3638j0j15&sourceid=chrome&ie=UTF-8",
 			},
 		},
 		{
-			name:     "Тест запроса по несуществующей ссылке",
-			ShortURL: "http://localhost:8080/asdadadad",
+			name: "Тест запроса по несуществующей ссылке",
 			want: want{
 				statusCode: 404,
+				location:   "",
 			},
 		},
 	}
 
-	//t.Logf("Массив items %v", items)
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.want.location)))
+			rec := httptest.NewRecorder()
+			ctx := e.NewContext(req, rec)
+
+			handlers.CreateItem(ctx)
+			responseBody := rec.Body.String()
 
 			// Получаем id из ссылки
-			split := strings.Split(tt.ShortURL, "/")
+			split := strings.Split(responseBody, "/")
 			splitLen := len(split)
 			id := split[splitLen-1]
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
-			rec := httptest.NewRecorder()
+			req = httptest.NewRequest(http.MethodGet, "/", nil)
+			rec = httptest.NewRecorder()
+
 			c := e.NewContext(req, rec)
 			c.SetPath("/:id")
 			c.SetParamNames("id")
