@@ -1,20 +1,18 @@
 package handlers
 
 import (
-	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"github.com/AntonNikol/go-shortener/internal/app/storage/memory"
 	"github.com/labstack/echo/v4"
 	"io"
+	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
 	"strconv"
 )
-
-var items []models.Item
 
 var host = "http://localhost:8080"
 
@@ -22,7 +20,7 @@ var repo repositories.RepositoryInterface
 
 func init() {
 	db := memory.Storage{}
-	repo = repositories.NewRepository(inmemory.New(&db))
+	repo = repositories.RepositoryInterface(inmemory.New(&db))
 }
 
 func CreateItem(c echo.Context) error {
@@ -42,17 +40,14 @@ func CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
 	}
 
-	fmt.Printf("body: %s\n", string(body))
+	log.Printf("handler CreteItem body: %s\n", string(body))
 
-	randomString := strconv.Itoa(rand.Int())
-	randomString = randomString[:6]
-
+	randomString := getRandomString("")
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: host + "/" + randomString,
 		ID:       randomString,
 	}
-	items = append(items, item)
 
 	item, err = repo.AddItem(item)
 	if err != nil {
@@ -67,10 +62,20 @@ func GetItem(c echo.Context) error {
 
 	item, err := repo.GetItemByID(id)
 	if err != nil {
-		return c.String(404, "Ссылка не найдена")
+		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
 
 	c.Response().Header().Set("Location", item.FullURL)
 	return c.String(http.StatusTemporaryRedirect, "")
+}
 
+func getRandomString(id string) string {
+	randomInt := rand.Intn(9000000 - 1000000)
+	randomString := strconv.Itoa(randomInt)
+
+	if randomString != id {
+		return randomString
+	}
+
+	return getRandomString(randomString)
 }
