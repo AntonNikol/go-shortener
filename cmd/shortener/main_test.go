@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,11 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-type TestItem struct {
-	FullURL  string
-	ShortURL string
-}
 
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
@@ -69,6 +65,72 @@ func Test_createItem(t *testing.T) {
 
 				// Проверка, что в ответе url
 				_, err := url.ParseRequestURI(responseBody)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// Тест сокращения ссылки с JsonBody
+func Test_createItemJson(t *testing.T) {
+
+	type want struct {
+		statusCode  int
+		response    string
+		contentType string
+	}
+
+	tests := []struct {
+		name string
+		body string
+		want want
+	}{
+		{
+			name: "Обычная ссылка",
+			body: `{"url": "https://practicum.yandex.ru/"}`,
+			want: want{
+				statusCode:  201,
+				contentType: "application/json; charset=UTF-8",
+			},
+		},
+		{
+			name: "Длинная ссылка",
+			body: `{"url": "https://www.google.com/search?q=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&oq=goland+%D1%83%D1%80%D0%BE%D0%BA%D0%B8&aqs=chrome..69i57j0i10i512.3638j0j15&sourceid=chrome&ie=UTF-8"}`,
+			want: want{
+				statusCode:  201,
+				contentType: "application/json; charset=UTF-8",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodPost, "/shorten", bytes.NewBuffer([]byte(tt.body)))
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.Request().Header.Set("Content-Type", "application/json")
+
+			// Проверки
+			if assert.NoError(t, handlers.CreateItemJson(c)) {
+				require.Equal(t, tt.want.statusCode, rec.Code)
+				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
+
+				// Получаем body ответа
+				responseBody := rec.Body.String()
+				t.Logf("Ответ сервера %s", responseBody)
+
+				// проверка что это json, декодируем в мапу
+				var response map[string]string
+				err := json.Unmarshal([]byte(responseBody), &response)
+				assert.NoError(t, err)
+
+				// проверка что в мапе есть result
+				value, exist := response["result"]
+				assert.True(t, exist)
+
+				// Проверка, что это url
+				_, err = url.ParseRequestURI(value)
 				require.NoError(t, err)
 			}
 		})

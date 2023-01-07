@@ -57,6 +57,33 @@ func CreateItem(c echo.Context) error {
 	return c.String(http.StatusCreated, item.ShortURL)
 }
 
+func CreateItemJson(c echo.Context) error {
+
+	randomString := getRandomString("")
+	item := models.Item{
+		ShortURL: host + "/" + randomString,
+		ID:       randomString,
+	}
+
+	if err := c.Bind(&item); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "ошибка парсинга json"+err.Error())
+	}
+
+	item, err := repo.AddItem(item)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+
+	}
+
+	result := struct {
+		Result string `json:"result"`
+	}{
+		Result: item.ShortURL,
+	}
+
+	return c.JSON(http.StatusCreated, result)
+}
+
 func GetItem(c echo.Context) error {
 	id := c.Param("id")
 
