@@ -11,11 +11,11 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 )
 
-var host = "http://localhost:8080"
-
+var host = os.Getenv("BASE_URL")
 var repo repositories.RepositoryInterface
 
 func init() {
