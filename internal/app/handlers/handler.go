@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
@@ -74,13 +75,17 @@ func CreateItemJSON(c echo.Context) error {
 
 	}
 
-	result := struct {
+	r, err := json.Marshal(struct {
 		Result string `json:"result"`
 	}{
 		Result: item.ShortURL,
+	})
+
+	if err != nil {
+		panic(err)
 	}
 
-	return c.JSON(http.StatusCreated, result)
+	return c.JSON(http.StatusCreated, r)
 }
 
 func GetItem(c echo.Context) error {

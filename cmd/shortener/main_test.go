@@ -106,7 +106,7 @@ func Test_createItemJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodPost, "/shorten", bytes.NewBuffer([]byte(tt.body)))
+			req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 			c.Request().Header.Set("Content-Type", "application/json")
