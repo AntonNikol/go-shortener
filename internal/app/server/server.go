@@ -9,7 +9,7 @@ func Run() {
 	e := echo.New() // Routes
 	e.GET("/:id", handlers.GetItem)
 	e.POST("/", handlers.CreateItem)
-	e.POST("/shorten", handlers.CreateItemJson)
+	e.POST("/shorten", handlers.CreateItemJSON)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8080"))
