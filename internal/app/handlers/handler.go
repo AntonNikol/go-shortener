@@ -7,7 +7,6 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/storage/memory"
 	"github.com/labstack/echo/v4"
 	"io"
-	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -40,7 +39,7 @@ func CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
 	}
 
-	log.Printf("handler CreteItem body: %s\n", string(body))
+	//log.Printf("handler CreteItem body: %s\n", string(body))
 
 	randomString := getRandomString("")
 	item := models.Item{
@@ -57,7 +56,7 @@ func CreateItem(c echo.Context) error {
 	return c.String(http.StatusCreated, item.ShortURL)
 }
 
-func CreateItemJson(c echo.Context) error {
+func CreateItemJSON(c echo.Context) error {
 
 	randomString := getRandomString("")
 	item := models.Item{

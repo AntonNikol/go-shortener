@@ -61,7 +61,7 @@ func Test_createItem(t *testing.T) {
 
 				// Получаем body ответа
 				responseBody := rec.Body.String()
-				t.Logf("Ответ сервера %s", responseBody)
+				//t.Logf("Ответ сервера %s", responseBody)
 
 				// Проверка, что в ответе url
 				_, err := url.ParseRequestURI(responseBody)
@@ -72,7 +72,7 @@ func Test_createItem(t *testing.T) {
 }
 
 // Тест сокращения ссылки с JsonBody
-func Test_createItemJson(t *testing.T) {
+func Test_createItemJSON(t *testing.T) {
 
 	type want struct {
 		statusCode  int
@@ -112,13 +112,13 @@ func Test_createItemJson(t *testing.T) {
 			c.Request().Header.Set("Content-Type", "application/json")
 
 			// Проверки
-			if assert.NoError(t, handlers.CreateItemJson(c)) {
+			if assert.NoError(t, handlers.CreateItemJSON(c)) {
 				require.Equal(t, tt.want.statusCode, rec.Code)
 				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
 				// Получаем body ответа
 				responseBody := rec.Body.String()
-				t.Logf("Ответ сервера %s", responseBody)
+				//t.Logf("Ответ сервера %s", responseBody)
 
 				// проверка что это json, декодируем в мапу
 				var response map[string]string
