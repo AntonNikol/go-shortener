@@ -72,7 +72,6 @@ func CreateItemJSON(c echo.Context) error {
 	item, err := repo.AddItem(item)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-
 	}
 
 	r, err := json.Marshal(struct {
@@ -84,8 +83,10 @@ func CreateItemJSON(c echo.Context) error {
 	if err != nil {
 		panic(err)
 	}
+	//return c.JSON(http.StatusCreated,r)
 
-	return c.JSON(http.StatusCreated, r)
+	c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
+	return c.String(http.StatusCreated, string(r))
 }
 
 func GetItem(c echo.Context) error {

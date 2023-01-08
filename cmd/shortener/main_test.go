@@ -123,11 +123,11 @@ func Test_createItemJSON(t *testing.T) {
 				// проверка что это json, декодируем в мапу
 				var response map[string]string
 				err := json.Unmarshal([]byte(responseBody), &response)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				// проверка что в мапе есть result
 				value, exist := response["result"]
-				assert.True(t, exist)
+				require.True(t, exist)
 
 				// Проверка, что это url
 				_, err = url.ParseRequestURI(value)
