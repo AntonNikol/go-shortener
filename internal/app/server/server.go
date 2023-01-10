@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
 	"github.com/labstack/echo/v4"
+	"log"
 	"net/http"
 	"os"
 )
@@ -16,9 +17,11 @@ func Run() {
 	//export SERVER_ADDRESS=localhost:8080
 	//export BASE_URL=http://localhost:8080
 
+	serverAddress := os.Getenv("SERVER_ADDRESS")
+	log.Printf("Сервер запущен на адрес %s $", serverAddress)
 	// Start server
 	s := http.Server{
-		Addr: os.Getenv("SERVER_ADDRESS"),
+		Addr: os.Getenv(serverAddress),
 	}
 	e.Logger.Fatal(e.StartServer(&s))
 
