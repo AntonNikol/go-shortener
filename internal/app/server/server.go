@@ -22,10 +22,10 @@ func Run() {
 		serverAddress = "0.0.0.0:8080"
 	}
 
-	log.Printf("Сервер запущен на адрес %s $", serverAddress)
+	log.Printf("Сервер запущен на адресе %s", serverAddress)
 	// Start server
 	s := http.Server{
-		Addr: os.Getenv(serverAddress),
+		Addr: serverAddress,
 	}
 	e.Logger.Fatal(e.StartServer(&s))
 
