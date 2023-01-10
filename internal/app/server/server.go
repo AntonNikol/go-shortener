@@ -16,13 +16,9 @@ func Run(cfg *config.Config) {
 
 	////export SERVER_ADDRESS=localhost:8080
 	////export BASE_URL=http://localhost:8080
-	//
-	//serverAddress := os.Getenv("SERVER_ADDRESS")
-	//if serverAddress == "" {
-	//	serverAddress = "0.0.0.0:8080"
-	//}
 
 	log.Printf("Сервер запущен на адресе %s", cfg.ServerAddress)
+
 	// Start server
 	s := http.Server{
 		Addr: cfg.ServerAddress,

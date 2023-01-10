@@ -24,6 +24,13 @@ func init() {
 }
 
 func CreateItem(c echo.Context) error {
+
+	// TODO: переделать получение host через конфиг
+	host = os.Getenv("BASE_URL")
+	if host == "" {
+		host = "http://localhost:8080"
+	}
+
 	defer c.Request().Body.Close()
 
 	body, err := io.ReadAll(c.Request().Body)
@@ -58,6 +65,11 @@ func CreateItem(c echo.Context) error {
 }
 
 func CreateItemJSON(c echo.Context) error {
+	// TODO: переделать получение host через конфиг
+	host = os.Getenv("BASE_URL")
+	if host == "" {
+		host = "http://localhost:8080"
+	}
 
 	randomString := getRandomString("")
 	item := models.Item{
