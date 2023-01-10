@@ -9,17 +9,17 @@ type Config struct {
 
 func Get() *Config {
 	serverAddress := os.Getenv("SERVER_ADDRESS")
-	baseUrl := os.Getenv("BASE_URL")
+	baseURL := os.Getenv("BASE_URL")
 
 	if serverAddress == "" {
 		serverAddress = "0.0.0.0:8080"
 	}
-	if baseUrl == "" {
-		baseUrl = "http://localhost:8080"
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
 	}
 
 	return &Config{
-		BaseURL:       baseUrl,
+		BaseURL:       baseURL,
 		ServerAddress: serverAddress,
 	}
 }
