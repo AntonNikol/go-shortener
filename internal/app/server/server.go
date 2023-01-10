@@ -18,6 +18,10 @@ func Run() {
 	//export BASE_URL=http://localhost:8080
 
 	serverAddress := os.Getenv("SERVER_ADDRESS")
+	if serverAddress == "" {
+		serverAddress = "0.0.0.0:8080"
+	}
+
 	log.Printf("Сервер запущен на адрес %s $", serverAddress)
 	// Start server
 	s := http.Server{
