@@ -37,18 +37,22 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	// добавляем в мапу items чтобы можно было получить данные без запроса файла
 	r.items[item.ID] = item
 
+	// пишем в буфер
 	writer := bufio.NewWriter(file)
 	_, err = writer.Write(data)
-	log.Printf("Запись в файл добавлена")
 	if err != nil {
 		panic(err)
 	}
 
+	// добавляем перенос строки
 	_, err = writer.Write([]byte("\n"))
 	if err != nil {
 		panic(err)
 	}
 
+	log.Printf("Запись в файл произведена")
+
+	// записываем буфер в файл
 	writer.Flush()
 	return item, nil
 }
@@ -56,8 +60,11 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 func (r *Repository) GetItemByID(id string) (models.Item, error) {
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
+		log.Printf("Результат найден в мапе")
 		return res, nil
 	}
+
+	log.Println("в мапе не найдено, идем в файл")
 
 	// если в мапе не найдено идем в файл
 	file, err := os.OpenFile(r.filename, os.O_RDONLY|os.O_CREATE, 0777)
@@ -66,19 +73,23 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 	}
 	scanner := bufio.NewScanner(file)
 
-	// если файл пустой
+	// одиночное сканирование до следующей строки
 	if !scanner.Scan() {
+		log.Printf("файл пустой")
 		return models.Item{}, errors.New("not found")
 	}
 
 	// читаем данные из scanner
 	data := scanner.Bytes()
 
+	log.Println("файл не пустой, берем строку и декодируем")
+
 	item := models.Item{}
 	err = json.Unmarshal(data, &item)
 	if err != nil {
-		return models.Item{}, err
+		log.Printf("возвращаем item")
+		return models.Item{}, errors.New("not found")
 	}
 
-	return models.Item{}, errors.New("not found")
+	return item, nil
 }
