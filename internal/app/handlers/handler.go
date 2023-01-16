@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
-	"github.com/AntonNikol/go-shortener/internal/app/storage/memory"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/file"
 	"github.com/labstack/echo/v4"
 	"io"
 	"math/rand"
@@ -16,11 +15,10 @@ import (
 )
 
 var host = os.Getenv("BASE_URL")
-var repo repositories.RepositoryInterface
+var repo repositories.Repository
 
 func init() {
-	db := memory.Storage{}
-	repo = repositories.RepositoryInterface(inmemory.New(&db))
+	repo = repositories.Repository(file.New("items.txt"))
 }
 
 func CreateItem(c echo.Context) error {
@@ -95,7 +93,6 @@ func CreateItemJSON(c echo.Context) error {
 	if err != nil {
 		panic(err)
 	}
-	//return c.JSON(http.StatusCreated,r)
 
 	c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
 	return c.String(http.StatusCreated, string(r))
@@ -114,7 +111,7 @@ func GetItem(c echo.Context) error {
 }
 
 func getRandomString(id string) string {
-	randomInt := rand.Intn(9000000 - 1000000)
+	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
 	if randomString != id {

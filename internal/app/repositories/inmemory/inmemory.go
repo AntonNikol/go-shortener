@@ -1,22 +1,29 @@
 package inmemory
 
 import (
+	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
-	"github.com/AntonNikol/go-shortener/internal/app/storage/memory"
 )
 
 type Repository struct {
-	db memory.Storage
+	items []models.Item
 }
 
-func New(db *memory.Storage) *Repository {
-	return &Repository{db: *db}
+func New() *Repository {
+	return &Repository{}
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {
-	return r.db.Add(item)
+	r.items = append(r.items, item)
+	return item, nil
 }
 
 func (r *Repository) GetItemByID(id string) (models.Item, error) {
-	return r.db.Get(id)
+	for _, item := range r.items {
+		if item.ID == id {
+			return item, nil
+		}
+	}
+
+	return models.Item{}, errors.New("not found")
 }
