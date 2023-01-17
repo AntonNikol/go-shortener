@@ -58,38 +58,33 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 }
 
 func (r *Repository) GetItemByID(id string) (models.Item, error) {
+	log.Println("GetItemById file")
+
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
 		log.Printf("Результат найден в мапе")
 		return res, nil
 	}
 
-	log.Println("в мапе не найдено, идем в файл")
-
-	// если в мапе не найдено идем в файл
 	file, err := os.OpenFile(r.filename, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		panic(err)
 	}
 	scanner := bufio.NewScanner(file)
 
-	// одиночное сканирование до следующей строки
-	if !scanner.Scan() {
-		log.Printf("файл пустой")
-		return models.Item{}, errors.New("not found")
+	for scanner.Scan() {
+		item := models.Item{}
+
+		if err = json.Unmarshal(scanner.Bytes(), &item); err != nil {
+			panic(err)
+		}
+		log.Printf("Построчное чтение, item : %s", item)
+
+		if item.ID == id {
+			log.Println("результат найден в файле")
+			return item, nil
+		}
 	}
 
-	// читаем данные из scanner
-	data := scanner.Bytes()
-
-	log.Println("файл не пустой, берем строку и декодируем")
-
-	item := models.Item{}
-	err = json.Unmarshal(data, &item)
-	if err != nil {
-		log.Printf("возвращаем item")
-		return models.Item{}, errors.New("not found")
-	}
-
-	return item, nil
+	return models.Item{}, errors.New("not found")
 }

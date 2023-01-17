@@ -115,13 +115,33 @@ func GetItem(c echo.Context) error {
 	return c.String(http.StatusTemporaryRedirect, "")
 }
 
+// получение рандомного id
 func getRandomString(id string) string {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
-	if randomString != id {
+	log.Printf("getRandomString Получение рандомного id: %s", id)
+	exists := checkItemExist(randomString)
+	log.Printf("getRandomString exists id: %v", exists)
+
+	if randomString != id && !exists {
 		return randomString
 	}
 
 	return getRandomString(randomString)
+}
+
+// проверка есть ли в файле item с таким id
+func checkItemExist(id string) bool {
+
+	log.Printf("checkItemExist проверка на существование item c id: %s", id)
+
+	item, err := repo.GetItemByID(id)
+	log.Printf("checkItemExist item: %v, err %v", item, err)
+
+	if err == nil {
+		return true
+	}
+
+	return false
 }
