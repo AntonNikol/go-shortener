@@ -139,9 +139,5 @@ func checkItemExist(id string) bool {
 	item, err := repo.GetItemByID(id)
 	log.Printf("checkItemExist item: %v, err %v", item, err)
 
-	if err == nil {
-		return true
-	}
-
-	return false
+	return err == nil
 }
