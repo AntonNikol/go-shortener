@@ -14,8 +14,6 @@ import (
 var repo repositories.Repository
 
 func Run(cfg *config.Config) {
-	e := echo.New() // Routes
-
 	// Определяем какой репозиторий будет использоваться - память или файл
 	if cfg.FileStoragePath != "" {
 		repo = repositories.Repository(file.New(cfg.FileStoragePath))
@@ -25,16 +23,17 @@ func Run(cfg *config.Config) {
 
 	h := handlers.New(cfg.BaseURL, repo)
 
+	// Routes
+	e := echo.New()
 	e.POST("/", h.CreateItem)
 	e.GET("/:id", h.GetItem)
 	e.POST("api/shorten", h.CreateItemJSON)
 
-	log.Printf("Сервер запущен на адресе %s", cfg.ServerAddress)
+	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 
 	// Start server
 	s := http.Server{
 		Addr: cfg.ServerAddress,
 	}
 	e.Logger.Fatal(e.StartServer(&s))
-
 }
