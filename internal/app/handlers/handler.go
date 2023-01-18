@@ -4,44 +4,54 @@ import (
 	"encoding/json"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/file"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 )
 
-var host = os.Getenv("BASE_URL")
-var repo repositories.Repository
-var filepath string
-
-func init() {
-
-	// TODO: переделать получение через конфиг
-
-	filepath = os.Getenv("FILE_STORAGE_PATH")
-	log.Printf("file path: %s", filepath)
-	if filepath != "" {
-		repo = repositories.Repository(file.New(filepath))
-	} else {
-		repo = repositories.Repository(inmemory.New())
-	}
-
-	host = os.Getenv("BASE_URL")
-	if host == "" {
-		host = "http://localhost:8080"
-	}
-
-	log.Printf("BASE_URL: %s", host)
-
+type Handlers struct {
+	baseURL    string
+	repository repositories.Repository
 }
 
-func CreateItem(c echo.Context) error {
+func New(baseURL string, repository repositories.Repository) *Handlers {
+	return &Handlers{
+		baseURL:    baseURL,
+		repository: repository,
+	}
+}
+
+//
+//var host = os.Getenv("BASE_URL")
+//var repo repositories.Repository
+//var filepath string
+//
+//func init() {
+//
+//	// TODO: переделать получение через конфиг
+//
+//	filepath = os.Getenv("FILE_STORAGE_PATH")
+//	log.Printf("file path: %s", filepath)
+//	if filepath != "" {
+//		repo = repositories.Repository(file.New(filepath))
+//	} else {
+//		repo = repositories.Repository(inmemory.New())
+//	}
+//
+//	host = os.Getenv("BASE_URL")
+//	if host == "" {
+//		host = "http://localhost:8080"
+//	}
+//
+//	log.Printf("BASE_URL: %s", host)
+//
+//}
+
+func (h Handlers) CreateItem(c echo.Context) error {
 	defer c.Request().Body.Close()
 
 	body, err := io.ReadAll(c.Request().Body)
@@ -58,14 +68,14 @@ func CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
 	}
 
-	randomString := getRandomString("")
+	randomString := h.getRandomString("")
 	item := models.Item{
 		FullURL:  string(body),
-		ShortURL: host + "/" + randomString,
+		ShortURL: h.baseURL + "/" + randomString,
 		ID:       randomString,
 	}
 
-	item, err = repo.AddItem(item)
+	item, err = h.repository.AddItem(item)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 
@@ -73,10 +83,10 @@ func CreateItem(c echo.Context) error {
 	return c.String(http.StatusCreated, item.ShortURL)
 }
 
-func CreateItemJSON(c echo.Context) error {
-	randomString := getRandomString("")
+func (h Handlers) CreateItemJSON(c echo.Context) error {
+	randomString := h.getRandomString("")
 	item := models.Item{
-		ShortURL: host + "/" + randomString,
+		ShortURL: h.baseURL + "/" + randomString,
 		ID:       randomString,
 	}
 
@@ -84,7 +94,7 @@ func CreateItemJSON(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "ошибка парсинга json "+err.Error())
 	}
 
-	item, err := repo.AddItem(item)
+	item, err := h.repository.AddItem(item)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -103,10 +113,10 @@ func CreateItemJSON(c echo.Context) error {
 	return c.String(http.StatusCreated, string(r))
 }
 
-func GetItem(c echo.Context) error {
+func (h Handlers) GetItem(c echo.Context) error {
 	id := c.Param("id")
 
-	item, err := repo.GetItemByID(id)
+	item, err := h.repository.GetItemByID(id)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
@@ -116,27 +126,27 @@ func GetItem(c echo.Context) error {
 }
 
 // получение рандомного id
-func getRandomString(id string) string {
+func (h Handlers) getRandomString(id string) string {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
 	log.Printf("getRandomString Получение рандомного id: %s", id)
-	exists := checkItemExist(randomString)
+	exists := h.checkItemExist(randomString)
 	log.Printf("getRandomString exists id: %v", exists)
 
 	if randomString != id && !exists {
 		return randomString
 	}
 
-	return getRandomString(randomString)
+	return h.getRandomString(randomString)
 }
 
 // проверка есть ли в файле item с таким id
-func checkItemExist(id string) bool {
+func (h Handlers) checkItemExist(id string) bool {
 
 	log.Printf("checkItemExist проверка на существование item c id: %s", id)
 
-	item, err := repo.GetItemByID(id)
+	item, err := h.repository.GetItemByID(id)
 	log.Printf("checkItemExist item: %v, err %v", item, err)
 
 	return err == nil

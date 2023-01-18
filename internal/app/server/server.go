@@ -2,20 +2,32 @@ package server
 
 import (
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/file"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
 )
 
+var repo repositories.Repository
+
 func Run(cfg *config.Config) {
 	e := echo.New() // Routes
-	e.POST("/", handlers.CreateItem)
-	e.GET("/:id", handlers.GetItem)
-	e.POST("api/shorten", handlers.CreateItemJSON)
 
-	////export SERVER_ADDRESS=localhost:8080
-	////export BASE_URL=http://localhost:8080
+	// Определяем какой репозиторий будет использоваться - память или файл
+	if cfg.FileStoragePath != "" {
+		repo = repositories.Repository(file.New(cfg.FileStoragePath))
+	} else {
+		repo = repositories.Repository(inmemory.New())
+	}
+
+	h := handlers.New(cfg.BaseURL, repo)
+
+	e.POST("/", h.CreateItem)
+	e.GET("/:id", h.GetItem)
+	e.POST("api/shorten", h.CreateItemJSON)
 
 	log.Printf("Сервер запущен на адресе %s", cfg.ServerAddress)
 
