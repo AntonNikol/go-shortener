@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -47,6 +49,8 @@ func Test_createItem(t *testing.T) {
 		},
 	}
 
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
@@ -55,7 +59,7 @@ func Test_createItem(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			// Проверки
-			if assert.NoError(t, handlers.CreateItem(c)) {
+			if assert.NoError(t, h.CreateItem(c)) {
 				require.Equal(t, tt.want.statusCode, rec.Code)
 				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
@@ -103,6 +107,8 @@ func Test_createItemJSON(t *testing.T) {
 		},
 	}
 
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
@@ -112,7 +118,7 @@ func Test_createItemJSON(t *testing.T) {
 			c.Request().Header.Set("Content-Type", "application/json")
 
 			// Проверки
-			if assert.NoError(t, handlers.CreateItemJSON(c)) {
+			if assert.NoError(t, h.CreateItemJSON(c)) {
 				require.Equal(t, tt.want.statusCode, rec.Code)
 				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
@@ -173,6 +179,8 @@ func Test_getItem(t *testing.T) {
 		},
 	}
 
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
@@ -180,7 +188,7 @@ func Test_getItem(t *testing.T) {
 			rec := httptest.NewRecorder()
 			ctx := e.NewContext(req, rec)
 
-			handlers.CreateItem(ctx)
+			h.CreateItem(ctx)
 			responseBody := rec.Body.String()
 
 			// Получаем id из ссылки
@@ -197,7 +205,7 @@ func Test_getItem(t *testing.T) {
 			c.SetParamValues(id)
 
 			// Assertions
-			if assert.NoError(t, handlers.GetItem(c)) {
+			if assert.NoError(t, h.GetItem(c)) {
 				assert.Equal(t, tt.want.statusCode, rec.Code)
 
 				// Если проверяем только то, что при осутствующем id хендлер вернет 404, то завершаем тест
