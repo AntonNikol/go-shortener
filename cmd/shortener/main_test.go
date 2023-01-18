@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
 
@@ -48,8 +50,6 @@ func Test_createItem(t *testing.T) {
 			},
 		},
 	}
-
-	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -106,8 +106,6 @@ func Test_createItemJSON(t *testing.T) {
 			},
 		},
 	}
-
-	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
