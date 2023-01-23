@@ -25,36 +25,12 @@ func New(baseURL string, repository repositories.Repository) *Handlers {
 	}
 }
 
-//
-//var host = os.Getenv("BASE_URL")
-//var repo repositories.Repository
-//var filepath string
-//
-//func init() {
-//
-//	// TODO: переделать получение через конфиг
-//
-//	filepath = os.Getenv("FILE_STORAGE_PATH")
-//	log.Printf("file path: %s", filepath)
-//	if filepath != "" {
-//		repo = repositories.Repository(file.New(filepath))
-//	} else {
-//		repo = repositories.Repository(inmemory.New())
-//	}
-//
-//	host = os.Getenv("BASE_URL")
-//	if host == "" {
-//		host = "http://localhost:8080"
-//	}
-//
-//	log.Printf("BASE_URL: %s", host)
-//
-//}
-
 func (h Handlers) CreateItem(c echo.Context) error {
 	defer c.Request().Body.Close()
 
 	body, err := io.ReadAll(c.Request().Body)
+
+	//fmt.Println("CreateItem полученный body: ", body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}

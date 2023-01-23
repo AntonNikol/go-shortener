@@ -7,8 +7,10 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var repo repositories.Repository
@@ -25,9 +27,24 @@ func Run(cfg *config.Config) {
 
 	// Routes
 	e := echo.New()
+
+	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие и декомпрессию
+	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+		Skipper: func(c echo.Context) bool {
+			return !strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip")
+		},
+	}))
+	e.Use(middleware.DecompressWithConfig(middleware.DecompressConfig{
+		Skipper: func(c echo.Context) bool {
+			log.Println("Проверка что в загловоке Accept-Encoding есть сжатие gzip",
+				strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip"))
+			return !strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip")
+		},
+	}))
+
 	e.POST("/", h.CreateItem)
-	e.GET("/:id", h.GetItem)
 	e.POST("api/shorten", h.CreateItemJSON)
+	e.GET("/:id", h.GetItem)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 
