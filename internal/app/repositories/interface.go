@@ -1,16 +1,15 @@
 package repositories
 
-import "github.com/AntonNikol/go-shortener/internal/app/models"
+import (
+	"errors"
+	"github.com/AntonNikol/go-shortener/internal/app/models"
+)
+
+var (
+	ErrNotFound = errors.New("not found")
+)
 
 type Repository interface {
 	AddItem(item models.Item) (models.Item, error)
 	GetItemByID(id string) (models.Item, error)
-}
-
-type ErrNotFound struct {
-	msg string // description of error
-}
-
-func (m *ErrNotFound) Error() string {
-	return "Not Found"
 }

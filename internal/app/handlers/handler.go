@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/labstack/echo/v4"
@@ -26,7 +28,6 @@ func New(baseURL string, repository repositories.Repository) *Handlers {
 }
 
 func (h Handlers) CreateItem(c echo.Context) error {
-	defer c.Request().Body.Close()
 	body, err := io.ReadAll(c.Request().Body)
 
 	if err != nil {
@@ -42,7 +43,12 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
 	}
 
-	randomString := h.generateUniqueItemID("")
+	randomString, err := h.generateUniqueItemID("")
+	if err != nil {
+		log.Printf("Ошибка генерации item ID %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Внутренняя ошибка сервера")
+	}
+
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/" + randomString,
@@ -58,7 +64,12 @@ func (h Handlers) CreateItem(c echo.Context) error {
 }
 
 func (h Handlers) CreateItemJSON(c echo.Context) error {
-	randomString := h.generateUniqueItemID("")
+	randomString, err := h.generateUniqueItemID("")
+	if err != nil {
+		log.Printf("Ошибка генерации item ID %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Внутренняя ошибка сервера")
+	}
+
 	item := models.Item{}
 
 	if err := c.Bind(&item); err != nil {
@@ -67,9 +78,10 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	item.ShortURL = h.baseURL + "/" + randomString
 	item.ID = randomString
 
-	item, err := h.repository.AddItem(item)
+	item, err = h.repository.AddItem(item)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		log.Printf("Ошибка записи в файл %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	r, err := json.Marshal(struct {
@@ -99,28 +111,32 @@ func (h Handlers) GetItem(c echo.Context) error {
 }
 
 // получение рандомного id
-func (h Handlers) generateUniqueItemID(id string) string {
+func (h Handlers) generateUniqueItemID(id string) (string, error) {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
 	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
-	exists := h.checkItemExist(randomString)
-	log.Printf("generateUniqueItemID exists id: %v", exists)
+	exist, err := h.checkItemExist(randomString)
+	if err != nil {
+		return "", fmt.Errorf("unable to check item exist item by id: %w", err)
+	}
 
-	if randomString != id && !exists {
-		return randomString
+	log.Printf("generateUniqueItemID exists id: %v", exist)
+
+	if randomString != id && !exist {
+		return randomString, nil
 	}
 
 	return h.generateUniqueItemID(randomString)
 }
 
 // проверка есть ли в файле item с таким id
-func (h Handlers) checkItemExist(id string) bool {
+func (h Handlers) checkItemExist(id string) (bool, error) {
+	_, err := h.repository.GetItemByID(id)
 
-	log.Printf("checkItemExist проверка на существование item c id: %s", id)
-
-	item, err := h.repository.GetItemByID(id)
-	log.Printf("checkItemExist item: %v, err %v", item, err)
-
-	return err == nil
+	// проверяем что ошибка не пустая и она не нот фаунд
+	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
+		return false, fmt.Errorf("unable to get item by id: %w", err)
+	}
+	return !errors.Is(err, repositories.ErrNotFound), nil
 }

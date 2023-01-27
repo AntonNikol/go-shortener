@@ -1,8 +1,8 @@
 package inmemory
 
 import (
-	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 )
 
 type Repository struct {
@@ -25,5 +25,5 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 		}
 	}
 
-	return models.Item{}, errors.New("not found")
+	return models.Item{}, repositories.ErrNotFound
 }

@@ -3,14 +3,17 @@ package file
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"log"
 	"os"
 )
 
 type Repository struct {
-	items    map[string]models.Item
+	repositories.Repository
+	//items    map[string]models.Item
 	file     *os.File
 	filename string
 }
@@ -22,10 +25,38 @@ func New(filename string) *Repository {
 		panic(err)
 	}
 
+	scanner := bufio.NewScanner(file)
+
+	//items := map[string]models.Item{}
+	//
+	//for scanner.Scan() {
+	//	item := models.Item{}
+	//
+	//	if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
+	//		panic(err)
+	//	}
+	//	items[item.ID] = item
+	//
+	//	log.Printf("Построчное чтение, item : %s", item)
+	//}
+
+	internal := inmemory.New()
+
+	for scanner.Scan() {
+		item := models.Item{}
+
+		if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
+			panic(err)
+		}
+		internal.AddItem(item)
+
+		log.Printf("Построчное чтение, item : %s", item)
+	}
+
 	return &Repository{
-		items:    map[string]models.Item{},
-		filename: filename,
-		file:     file,
+		filename:   filename,
+		file:       file,
+		Repository: internal,
 	}
 }
 
@@ -36,7 +67,12 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	}
 
 	// добавляем в мапу items чтобы можно было получить данные без запроса файла
-	r.items[item.ID] = item
+	//r.items[item.ID] = item
+
+	_, err = r.Repository.AddItem(item)
+	if err != nil {
+		return models.Item{}, fmt.Errorf("unable to add item to internal repository: %w", err)
+	}
 
 	// пишем в буфер
 	writer := bufio.NewWriter(r.file)
@@ -48,7 +84,9 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	// добавляем перенос строки
 	_, err = writer.Write([]byte("\n"))
 	if err != nil {
-		panic(err)
+		//panic(err)
+
+		return models.Item{}, fmt.Errorf("ошибка записи в файл: %w", err)
 	}
 
 	log.Printf("Запись в файл произведена")
@@ -58,30 +96,14 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	return item, nil
 }
 
-func (r *Repository) GetItemByID(id string) (models.Item, error) {
-	log.Println("GetItemById file")
-
-	// проверяем мапу на наличие там айтема по ключу
-	if res, ok := r.items[id]; ok {
-		log.Printf("Результат найден в мапе")
-		return res, nil
-	}
-
-	scanner := bufio.NewScanner(r.file)
-
-	for scanner.Scan() {
-		item := models.Item{}
-
-		if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
-			panic(err)
-		}
-		log.Printf("Построчное чтение, item : %s", item)
-
-		if item.ID == id {
-			log.Println("результат найден в файле")
-			return item, nil
-		}
-	}
-
-	return models.Item{}, errors.New("not found")
-}
+//func (r *Repository) GetItemByID(id string) (models.Item, error) {
+//	log.Println("GetItemById file")
+//
+//	// проверяем мапу на наличие там айтема по ключу
+//	if res, ok := r.items[id]; ok {
+//		log.Printf("Результат найден в мапе")
+//		return res, nil
+//	}
+//
+//	return models.Item{}, repositories.ErrNotFound
+//}

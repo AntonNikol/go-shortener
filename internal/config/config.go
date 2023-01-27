@@ -5,9 +5,14 @@ import (
 	"os"
 )
 
+// можно использовать библиотеку env config для парсинга флагов
+
+// Пример запуска сервера
+//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt
+
 type Config struct {
 	BaseURL         string
-	ServerAddress   string
+	ServerAddress   string `env:"server_address"`
 	FileStoragePath string
 }
 
