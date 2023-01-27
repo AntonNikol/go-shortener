@@ -36,8 +36,6 @@ func Run(cfg *config.Config) {
 	}))
 	e.Use(middleware.DecompressWithConfig(middleware.DecompressConfig{
 		Skipper: func(c echo.Context) bool {
-			log.Println("Проверка что в загловоке Accept-Encoding есть сжатие gzip",
-				strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip"))
 			return !strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip")
 		},
 	}))

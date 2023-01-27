@@ -11,14 +11,21 @@ import (
 
 type Repository struct {
 	items    map[string]models.Item
-	file     os.File
+	file     *os.File
 	filename string
 }
 
 func New(filename string) *Repository {
+	// Открываем файл
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Repository{
 		items:    map[string]models.Item{},
 		filename: filename,
+		file:     file,
 	}
 }
 
@@ -28,17 +35,11 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 		panic(err)
 	}
 
-	// Открываем файл
-	file, err := os.OpenFile(r.filename, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
-	if err != nil {
-		panic(err)
-	}
-
 	// добавляем в мапу items чтобы можно было получить данные без запроса файла
 	r.items[item.ID] = item
 
 	// пишем в буфер
-	writer := bufio.NewWriter(file)
+	writer := bufio.NewWriter(r.file)
 	_, err = writer.Write(data)
 	if err != nil {
 		panic(err)
@@ -66,16 +67,12 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 		return res, nil
 	}
 
-	file, err := os.OpenFile(r.filename, os.O_RDONLY|os.O_CREATE, 0777)
-	if err != nil {
-		panic(err)
-	}
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(r.file)
 
 	for scanner.Scan() {
 		item := models.Item{}
 
-		if err = json.Unmarshal(scanner.Bytes(), &item); err != nil {
+		if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
 			panic(err)
 		}
 		log.Printf("Построчное чтение, item : %s", item)

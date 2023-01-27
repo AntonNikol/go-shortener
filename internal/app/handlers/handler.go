@@ -27,10 +27,8 @@ func New(baseURL string, repository repositories.Repository) *Handlers {
 
 func (h Handlers) CreateItem(c echo.Context) error {
 	defer c.Request().Body.Close()
-
 	body, err := io.ReadAll(c.Request().Body)
 
-	//fmt.Println("CreateItem полученный body: ", body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
@@ -44,7 +42,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
 	}
 
-	randomString := h.getRandomString("")
+	randomString := h.generateUniqueItemID("")
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/" + randomString,
@@ -60,15 +58,14 @@ func (h Handlers) CreateItem(c echo.Context) error {
 }
 
 func (h Handlers) CreateItemJSON(c echo.Context) error {
-	randomString := h.getRandomString("")
-	item := models.Item{
-		ShortURL: h.baseURL + "/" + randomString,
-		ID:       randomString,
-	}
+	randomString := h.generateUniqueItemID("")
+	item := models.Item{}
 
 	if err := c.Bind(&item); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "ошибка парсинга json "+err.Error())
 	}
+	item.ShortURL = h.baseURL + "/" + randomString
+	item.ID = randomString
 
 	item, err := h.repository.AddItem(item)
 	if err != nil {
@@ -102,19 +99,19 @@ func (h Handlers) GetItem(c echo.Context) error {
 }
 
 // получение рандомного id
-func (h Handlers) getRandomString(id string) string {
+func (h Handlers) generateUniqueItemID(id string) string {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
-	log.Printf("getRandomString Получение рандомного id: %s", id)
+	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
 	exists := h.checkItemExist(randomString)
-	log.Printf("getRandomString exists id: %v", exists)
+	log.Printf("generateUniqueItemID exists id: %v", exists)
 
 	if randomString != id && !exists {
 		return randomString
 	}
 
-	return h.getRandomString(randomString)
+	return h.generateUniqueItemID(randomString)
 }
 
 // проверка есть ли в файле item с таким id
