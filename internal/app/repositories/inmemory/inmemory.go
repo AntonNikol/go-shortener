@@ -3,10 +3,11 @@ package inmemory
 import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"log"
 )
 
 type Repository struct {
-	items []models.Item
+	items map[string]models.Item
 }
 
 func New() *Repository {
@@ -14,15 +15,18 @@ func New() *Repository {
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {
-	r.items = append(r.items, item)
+	// добавляем в мапу items
+	r.items[item.ID] = item
 	return item, nil
 }
 
 func (r *Repository) GetItemByID(id string) (models.Item, error) {
-	for _, item := range r.items {
-		if item.ID == id {
-			return item, nil
-		}
+	log.Println("GetItemById file")
+
+	// проверяем мапу на наличие там айтема по ключу
+	if res, ok := r.items[id]; ok {
+		log.Printf("Результат найден в мапе")
+		return res, nil
 	}
 
 	return models.Item{}, repositories.ErrNotFound

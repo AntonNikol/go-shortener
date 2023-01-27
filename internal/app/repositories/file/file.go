@@ -11,6 +11,13 @@ import (
 	"os"
 )
 
+// встраивание реализации inmemory в file
+// При создании структуры вкладываем в нее интерфейс,
+// далее вызывая в хенделере метод repository.GetItemByID
+// будет вызываться метод repositories.inmemory.GetItemByID
+// Если реализаций интерфейса будет больше, то в структуру необходимо класть поле repository: inmemory
+// и в file.go вызывать метод r.repository.GetItemByID
+
 type Repository struct {
 	repositories.Repository
 	//items    map[string]models.Item
@@ -25,23 +32,9 @@ func New(filename string) *Repository {
 		panic(err)
 	}
 
-	scanner := bufio.NewScanner(file)
-
-	//items := map[string]models.Item{}
-	//
-	//for scanner.Scan() {
-	//	item := models.Item{}
-	//
-	//	if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
-	//		panic(err)
-	//	}
-	//	items[item.ID] = item
-	//
-	//	log.Printf("Построчное чтение, item : %s", item)
-	//}
-
 	internal := inmemory.New()
 
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		item := models.Item{}
 
@@ -63,12 +56,12 @@ func New(filename string) *Repository {
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	data, err := json.Marshal(item)
 	if err != nil {
-		panic(err)
+		return models.Item{}, fmt.Errorf("unable serialise item %w", err)
 	}
 
-	// добавляем в мапу items чтобы можно было получить данные без запроса файла
-	//r.items[item.ID] = item
-
+	// Тут добавляем item в Repository который положили в структуру (в этом случае inmemory),
+	// а в файл просто пишем новые строки чтобы при инициализации репозитория после перезапуска сервера
+	// заполнить мапу данными
 	_, err = r.Repository.AddItem(item)
 	if err != nil {
 		return models.Item{}, fmt.Errorf("unable to add item to internal repository: %w", err)
@@ -78,15 +71,13 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	writer := bufio.NewWriter(r.file)
 	_, err = writer.Write(data)
 	if err != nil {
-		panic(err)
+		return models.Item{}, fmt.Errorf("unable to write file: %w", err)
 	}
 
 	// добавляем перенос строки
 	_, err = writer.Write([]byte("\n"))
 	if err != nil {
-		//panic(err)
-
-		return models.Item{}, fmt.Errorf("ошибка записи в файл: %w", err)
+		return models.Item{}, fmt.Errorf("unable to write file: %w", err)
 	}
 
 	log.Printf("Запись в файл произведена")
@@ -95,15 +86,3 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	writer.Flush()
 	return item, nil
 }
-
-//func (r *Repository) GetItemByID(id string) (models.Item, error) {
-//	log.Println("GetItemById file")
-//
-//	// проверяем мапу на наличие там айтема по ключу
-//	if res, ok := r.items[id]; ok {
-//		log.Printf("Результат найден в мапе")
-//		return res, nil
-//	}
-//
-//	return models.Item{}, repositories.ErrNotFound
-//}

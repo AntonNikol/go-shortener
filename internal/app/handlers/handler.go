@@ -35,18 +35,18 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	}
 
 	if len(body) == 0 {
-		return echo.NewHTTPError(http.StatusBadRequest, "Body обязательно")
+		return echo.NewHTTPError(http.StatusBadRequest, "Request body is required")
 	}
 
 	_, err = url.ParseRequestURI(string(body))
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Невалидный url")
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid url")
 	}
 
 	randomString, err := h.generateUniqueItemID("")
 	if err != nil {
 		log.Printf("Ошибка генерации item ID %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Внутренняя ошибка сервера")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	item := models.Item{
@@ -67,13 +67,13 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	randomString, err := h.generateUniqueItemID("")
 	if err != nil {
 		log.Printf("Ошибка генерации item ID %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Внутренняя ошибка сервера")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	item := models.Item{}
 
 	if err := c.Bind(&item); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "ошибка парсинга json "+err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, "json parsing error "+err.Error())
 	}
 	item.ShortURL = h.baseURL + "/" + randomString
 	item.ID = randomString
@@ -91,7 +91,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	})
 
 	if err != nil {
-		panic(err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
