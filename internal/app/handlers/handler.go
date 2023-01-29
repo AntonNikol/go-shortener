@@ -51,20 +51,15 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIdFromCookies(c)
+	userID, err := getUserIDFromCookies(c)
 	if err != nil {
 		userID, err = generateUserID()
 		if err != nil {
 			log.Printf("ошибка генерации UserID %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
-
 		// Устанавливаем куки в заголовки
-		cookie := new(http.Cookie)
-		cookie.Name = "user_id"
-		cookie.Value = userID
-		cookie.Expires = time.Now().Add(24 * time.Hour)
-		c.SetCookie(cookie)
+		getUserIDInCookies(c, userID)
 	}
 
 	item := models.Item{
@@ -89,20 +84,15 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	}
 
 	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIdFromCookies(c)
+	userID, err := getUserIDFromCookies(c)
 	if err != nil {
 		userID, err = generateUserID()
 		if err != nil {
 			log.Printf("ошибка генерации UserID %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
-
 		// Устанавливаем куки в заголовки
-		cookie := new(http.Cookie)
-		cookie.Name = "user_id"
-		cookie.Value = userID
-		cookie.Expires = time.Now().Add(24 * time.Hour)
-		c.SetCookie(cookie)
+		getUserIDInCookies(c, userID)
 	}
 
 	item := models.Item{}
@@ -149,7 +139,7 @@ func (h Handlers) GetItem(c echo.Context) error {
 
 func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	// Если по юзеру ничего не найдено возвращаем 204
-	userID, err := getUserIdFromCookies(c)
+	userID, err := getUserIDFromCookies(c)
 	if err != nil {
 		return c.String(http.StatusNoContent, "")
 	}
@@ -209,7 +199,7 @@ func generateUserID() (string, error) {
 }
 
 // Получение UserID из cookie
-func getUserIdFromCookies(c echo.Context) (string, error) {
+func getUserIDFromCookies(c echo.Context) (string, error) {
 	cookie, err := c.Cookie("user_id")
 	if err != nil {
 		return "", err
@@ -217,4 +207,13 @@ func getUserIdFromCookies(c echo.Context) (string, error) {
 	fmt.Println(cookie.Name)
 	fmt.Println(cookie.Value)
 	return cookie.Value, nil
+}
+
+func getUserIDInCookies(c echo.Context, userID string) {
+	// Устанавливаем куки в заголовки
+	cookie := new(http.Cookie)
+	cookie.Name = "user_id"
+	cookie.Value = userID
+	cookie.Expires = time.Now().Add(24 * time.Hour)
+	c.SetCookie(cookie)
 }
