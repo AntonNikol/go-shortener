@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"log"
@@ -23,7 +24,7 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 }
 
 func (r *Repository) GetItemByID(id string) (models.Item, error) {
-	log.Println("GetItemById file")
+	log.Println("GetItemById memory")
 
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
@@ -32,4 +33,21 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 	}
 
 	return models.Item{}, repositories.ErrNotFound
+}
+
+func (r *Repository) GetItemsByUserID(userID string) ([]models.Item, error) {
+	log.Println("GetItemsByUserID memory")
+
+	res := make([]models.Item, 0)
+	// проверяем мапу на наличие там айтема с userID
+	for _, v := range r.items {
+		if v.UserID == userID {
+			res = append(res, v)
+		}
+	}
+	if len(res) == 0 {
+		return res, errors.New("items not found")
+	}
+
+	return res, nil
 }

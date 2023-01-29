@@ -28,21 +28,24 @@ func Run(cfg *config.Config) {
 	// Routes
 	e := echo.New()
 
-	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие и декомпрессию
+	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Skipper: func(c echo.Context) bool {
 			return !strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip")
 		},
 	}))
+
+	// Если в запросе клиента есть заголовок Content-Encoding gzip, то используем декомпрессию
 	e.Use(middleware.DecompressWithConfig(middleware.DecompressConfig{
 		Skipper: func(c echo.Context) bool {
-			return !strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip")
+			return !strings.Contains(c.Request().Header.Get("Content-Encoding"), "gzip")
 		},
 	}))
 
 	e.POST("/", h.CreateItem)
 	e.POST("api/shorten", h.CreateItemJSON)
 	e.GET("/:id", h.GetItem)
+	e.GET("/api/user/urls", h.GetItemsByUserID)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 

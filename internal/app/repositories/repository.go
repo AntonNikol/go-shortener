@@ -12,4 +12,5 @@ var (
 type Repository interface {
 	AddItem(item models.Item) (models.Item, error)
 	GetItemByID(id string) (models.Item, error)
+	GetItemsByUserID(userID string) ([]models.Item, error)
 }

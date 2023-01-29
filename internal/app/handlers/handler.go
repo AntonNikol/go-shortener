@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 type Handlers struct {
@@ -48,17 +50,22 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		log.Printf("Ошибка генерации item ID %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
+	//
+	//userID, err := generateUserID()
+	//if err != nil {
+	//	return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	//}
 
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/" + randomString,
 		ID:       randomString,
+		//UserID:   userID,
 	}
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-
 	}
 	return c.String(http.StatusCreated, item.ShortURL)
 }
@@ -70,13 +77,31 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
-	item := models.Item{}
+	//Если в куках передан UserID берем его - иначе генерируем новый
+	userID, err := getUserIdFromCookies(c)
+	if err != nil {
+		userID, err = generateUserID()
+		if err != nil {
+			log.Printf("ошибка генерации UserID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
 
+		// Устанавливаем куки в заголовки
+		cookie := new(http.Cookie)
+		cookie.Name = "user_id"
+		cookie.Value = userID
+		cookie.Expires = time.Now().Add(24 * time.Hour)
+		c.SetCookie(cookie)
+	}
+
+	item := models.Item{}
 	if err := c.Bind(&item); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "json parsing error "+err.Error())
+		log.Printf("handler CreateItemJSON json parsing error %v", err)
+		return echo.NewHTTPError(http.StatusBadRequest, "JSON parsing error")
 	}
 	item.ShortURL = h.baseURL + "/" + randomString
 	item.ID = randomString
+	item.UserID = userID
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
@@ -91,6 +116,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	})
 
 	if err != nil {
+		log.Printf("Ошибка сериализации json %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
@@ -108,6 +134,23 @@ func (h Handlers) GetItem(c echo.Context) error {
 
 	c.Response().Header().Set("Location", item.FullURL)
 	return c.String(http.StatusTemporaryRedirect, "")
+}
+
+func (h Handlers) GetItemsByUserID(c echo.Context) error {
+	// Если по юзеру ничего не найдено возвращаем 204
+	userID, err := getUserIdFromCookies(c)
+	if err != nil {
+		return c.String(http.StatusNoContent, "")
+	}
+
+	items, err := h.repository.GetItemsByUserID(userID)
+	if err != nil {
+		log.Printf("GetItemsByUserID ошибка: %v", err)
+		return c.String(http.StatusNoContent, "")
+	}
+	log.Printf("GetItemsByUserID найдено items: %d", len(items))
+
+	return c.JSON(http.StatusOK, items)
 }
 
 // получение рандомного id
@@ -139,4 +182,28 @@ func (h Handlers) checkItemExist(id string) (bool, error) {
 		return false, fmt.Errorf("unable to get item by id: %w", err)
 	}
 	return !errors.Is(err, repositories.ErrNotFound), nil
+}
+
+// Генерация уникального UserID
+func generateUserID() (string, error) {
+	// определяем слайс нужной длины
+	b := make([]byte, 16)
+	_, err := rand.Read(b) // записываем байты в массив b
+	if err != nil {
+		log.Printf("generateUserID error: %v\n", err)
+		return "", err
+	}
+
+	return hex.EncodeToString(b), nil
+}
+
+// Получение UserID из cookie
+func getUserIdFromCookies(c echo.Context) (string, error) {
+	cookie, err := c.Cookie("user_id")
+	if err != nil {
+		return "", err
+	}
+	fmt.Println(cookie.Name)
+	fmt.Println(cookie.Value)
+	return cookie.Value, nil
 }
