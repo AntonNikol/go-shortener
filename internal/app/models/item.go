@@ -8,8 +8,8 @@ type Item struct {
 }
 
 type ItemResponse struct {
-	ID       string `json:"1"`
+	ID       string `json:"-"`
 	FullURL  string `json:"original_url"`
 	ShortURL string `json:"short_url"`
-	UserID   string `json:"2"`
+	UserID   string `json:"-"`
 }

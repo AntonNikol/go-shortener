@@ -35,14 +35,14 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 	return models.Item{}, repositories.ErrNotFound
 }
 
-func (r *Repository) GetItemsByUserID(userID string) ([]models.Item, error) {
+func (r *Repository) GetItemsByUserID(userID string) ([]models.ItemResponse, error) {
 	log.Println("GetItemsByUserID memory")
 
-	res := make([]models.Item, 0)
+	res := make([]models.ItemResponse, 0)
 	// проверяем мапу на наличие там айтема с userID
 	for _, v := range r.items {
 		if v.UserID == userID {
-			res = append(res, v)
+			res = append(res, models.ItemResponse{ShortURL: v.ShortURL, FullURL: v.FullURL})
 		}
 	}
 	if len(res) == 0 {

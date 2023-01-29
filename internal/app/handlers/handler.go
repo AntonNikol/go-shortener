@@ -50,17 +50,28 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		log.Printf("Ошибка генерации item ID %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
-	//
-	//userID, err := generateUserID()
-	//if err != nil {
-	//	return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	//}
+	//Если в куках передан UserID берем его - иначе генерируем новый
+	userID, err := getUserIdFromCookies(c)
+	if err != nil {
+		userID, err = generateUserID()
+		if err != nil {
+			log.Printf("ошибка генерации UserID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
+
+		// Устанавливаем куки в заголовки
+		cookie := new(http.Cookie)
+		cookie.Name = "user_id"
+		cookie.Value = userID
+		cookie.Expires = time.Now().Add(24 * time.Hour)
+		c.SetCookie(cookie)
+	}
 
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/" + randomString,
 		ID:       randomString,
-		//UserID:   userID,
+		UserID:   userID,
 	}
 
 	item, err = h.repository.AddItem(item)
