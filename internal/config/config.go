@@ -14,16 +14,19 @@ type Config struct {
 	BaseURL         string
 	ServerAddress   string `env:"server_address"`
 	FileStoragePath string
+	DBAddress       string
 }
 
 func Get() *Config {
 	serverAddress := os.Getenv("SERVER_ADDRESS")
 	baseURL := os.Getenv("BASE_URL")
 	fileStoragePath := os.Getenv("FILE_STORAGE_PATH")
+	dbAddress := os.Getenv("DATABASE_DSN")
 
 	address := flag.String("a", serverAddress, "server address")
 	url := flag.String("b", baseURL, "base url")
 	storage := flag.String("f", fileStoragePath, "file storage path")
+	db := flag.String("d", dbAddress, "db address")
 	flag.Parse()
 
 	serverAddress = *address
@@ -40,5 +43,6 @@ func Get() *Config {
 		BaseURL:         baseURL,
 		ServerAddress:   serverAddress,
 		FileStoragePath: *storage,
+		DBAddress:       *db,
 	}
 }

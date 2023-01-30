@@ -46,6 +46,7 @@ func Run(cfg *config.Config) {
 	e.POST("api/shorten", h.CreateItemJSON)
 	e.GET("/:id", h.GetItem)
 	e.GET("/api/user/urls", h.GetItemsByUserID)
+	e.GET("/ping", h.DBPing)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 

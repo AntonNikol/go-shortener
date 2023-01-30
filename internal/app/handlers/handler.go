@@ -217,3 +217,7 @@ func getUserIDInCookies(c echo.Context, userID string) {
 	cookie.Expires = time.Now().Add(24 * time.Hour)
 	c.SetCookie(cookie)
 }
+
+func (h Handlers) DBPing(c echo.Context) error {
+	return c.String(http.StatusOK, "")
+}
