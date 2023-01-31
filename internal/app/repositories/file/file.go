@@ -55,8 +55,7 @@ func New(filename string) *Repository {
 }
 
 func (r *Repository) Ping(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {

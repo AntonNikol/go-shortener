@@ -12,15 +12,14 @@ type Repository struct {
 	items map[string]models.Item
 }
 
-func (r *Repository) Ping(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func New() *Repository {
 	return &Repository{
 		items: map[string]models.Item{},
 	}
+}
+
+func (r *Repository) Ping(ctx context.Context) error {
+	return nil
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {

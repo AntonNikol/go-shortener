@@ -34,15 +34,14 @@ func New(ctx context.Context, DSN string) *Postgres {
 		log.Fatalf("unable to connect to database: %v\n", err)
 	}
 
-	err = conn.Ping(ctx)
-	if err != nil {
-		log.Println("err ping")
-	}
+	//err = conn.Ping(ctx)
+	//if err != nil {
+	//	log.Println("err ping")
+	//}
 
 	return &Postgres{DB: conn}
 }
 
 func (p Postgres) Ping(ctx context.Context) error {
 	return p.DB.Ping(ctx)
-
 }

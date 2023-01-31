@@ -10,6 +10,7 @@ import (
 // Пример запуска сервера
 // go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
 // docker run --name=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='qwerty' -p5438:5432 -d --rm postgres
+// "postgres://postgres:qwerty@localhost:5438/postgres?sslmode=disable"
 
 type Config struct {
 	BaseURL         string
