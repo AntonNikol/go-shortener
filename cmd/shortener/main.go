@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/file"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
 	"github.com/AntonNikol/go-shortener/internal/app/server"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	_ "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 )
 
-//docker run --name=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='qwerty' -p5438:5432 -d --rm postgres
+var repo repositories.Repository
 
 func main() {
 	cfg := config.Get()
@@ -32,12 +37,12 @@ func main() {
 	//os.Exit(0)
 	//
 
-	//if cfg.DbDSN != "" {
-	//	log.Printf("Передан database dsn %s", cfg.DbDSN)
+	//if cfg.DBDSN != "" {
+	//	log.Printf("Передан database dsn %s", cfg.DBDSN)
 	//	ctx, _ := context.WithCancel(context.Background())
 	//	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
 	//	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
-	//	conn, err := pgx.Connect(ctx, cfg.DbDSN)
+	//	conn, err := pgx.Connect(ctx, cfg.DBDSN)
 	//	if err != nil {
 	//		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
 	//		os.Exit(1)
@@ -52,7 +57,19 @@ func main() {
 	//	//
 	//}
 
-	server.Run(cfg)
+	ctx := context.Background()
+	// Определяем какой репозиторий будет использоваться - память или файл
+	if cfg.FileStoragePath != "" {
+		repo = repositories.Repository(file.New(cfg.FileStoragePath))
+	} else {
+		repo = repositories.Repository(inmemory.New())
+	}
+
+	if cfg.DBDSN != "" {
+		repo = repositories.Repository(postgres.New(ctx, cfg.DBDSN))
+	}
+
+	server.Run(ctx, cfg, repo)
 }
 
 /* TODO вопросы ментору

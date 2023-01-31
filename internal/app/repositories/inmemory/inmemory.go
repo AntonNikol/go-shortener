@@ -1,6 +1,7 @@
 package inmemory
 
 import (
+	"context"
 	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
@@ -9,6 +10,11 @@ import (
 
 type Repository struct {
 	items map[string]models.Item
+}
+
+func (r *Repository) Ping(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func New() *Repository {

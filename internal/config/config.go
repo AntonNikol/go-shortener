@@ -8,7 +8,8 @@ import (
 // можно использовать библиотеку env config для парсинга флагов
 
 // Пример запуска сервера
-//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt
+// go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
+// docker run --name=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='qwerty' -p5438:5432 -d --rm postgres
 
 type Config struct {
 	BaseURL         string

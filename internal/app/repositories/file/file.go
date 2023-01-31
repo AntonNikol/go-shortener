@@ -2,6 +2,7 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
@@ -51,6 +52,11 @@ func New(filename string) *Repository {
 		file:       file,
 		Repository: internal,
 	}
+}
+
+func (r *Repository) Ping(ctx context.Context) error {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {

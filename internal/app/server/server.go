@@ -1,10 +1,9 @@
 package server
 
 import (
+	"context"
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/file"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -15,18 +14,13 @@ import (
 
 var repo repositories.Repository
 
-func Run(cfg *config.Config) {
-	// Определяем какой репозиторий будет использоваться - память или файл
-	if cfg.FileStoragePath != "" {
-		repo = repositories.Repository(file.New(cfg.FileStoragePath))
-	} else {
-		repo = repositories.Repository(inmemory.New())
-	}
+func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
 
 	h := handlers.New(cfg.BaseURL, repo, cfg.DBDSN)
 
 	// Routes
 	e := echo.New()
+	e.Use(carryContextMiddleware(ctx))
 
 	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
@@ -55,4 +49,14 @@ func Run(cfg *config.Config) {
 		Addr: cfg.ServerAddress,
 	}
 	e.Logger.Fatal(e.StartServer(&s))
+}
+
+func carryContextMiddleware(ctx context.Context) func(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.SetRequest(c.Request().WithContext(ctx))
+
+			return next(c)
+		}
+	}
 }

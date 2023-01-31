@@ -1,21 +1,18 @@
 package handlers
 
 import (
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"time"
 )
@@ -224,18 +221,8 @@ func setUserIDInCookies(c echo.Context, userID string) {
 }
 
 func (h Handlers) DBPing(c echo.Context) error {
-	log.Printf("handler DBPing передан database dsn %s", h.dbDSN)
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
-	db, err := pgx.Connect(ctx, h.dbDSN)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Unable to connect to database: %v\n", err))
 
-	}
-
-	err = db.Ping(ctx)
+	err := h.repository.Ping(c.Request().Context())
 	if err != nil {
 		log.Println("err ping")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
