@@ -23,7 +23,7 @@ func Run(cfg *config.Config) {
 		repo = repositories.Repository(inmemory.New())
 	}
 
-	h := handlers.New(cfg.BaseURL, repo)
+	h := handlers.New(cfg.BaseURL, repo, cfg.DbDSN)
 
 	// Routes
 	e := echo.New()

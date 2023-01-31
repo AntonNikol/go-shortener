@@ -1,18 +1,21 @@
 package handlers
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 )
@@ -20,12 +23,14 @@ import (
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
+	dbDSN      string
 }
 
-func New(baseURL string, repository repositories.Repository) *Handlers {
+func New(baseURL string, repository repositories.Repository, dbDSN string) *Handlers {
 	return &Handlers{
 		baseURL:    baseURL,
 		repository: repository,
+		dbDSN:      dbDSN,
 	}
 }
 
@@ -59,7 +64,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
 		// Устанавливаем куки в заголовки
-		getUserIDInCookies(c, userID)
+		setUserIDInCookies(c, userID)
 	}
 
 	item := models.Item{
@@ -92,7 +97,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
 		// Устанавливаем куки в заголовки
-		getUserIDInCookies(c, userID)
+		setUserIDInCookies(c, userID)
 	}
 
 	item := models.Item{}
@@ -209,7 +214,7 @@ func getUserIDFromCookies(c echo.Context) (string, error) {
 	return cookie.Value, nil
 }
 
-func getUserIDInCookies(c echo.Context, userID string) {
+func setUserIDInCookies(c echo.Context, userID string) {
 	// Устанавливаем куки в заголовки
 	cookie := new(http.Cookie)
 	cookie.Name = "user_id"
@@ -219,5 +224,21 @@ func getUserIDInCookies(c echo.Context, userID string) {
 }
 
 func (h Handlers) DBPing(c echo.Context) error {
+	log.Printf("handler DBPing передан database dsn %s", h.dbDSN)
+	ctx, _ := context.WithCancel(context.Background())
+	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
+	db, err := pgx.Connect(ctx, h.dbDSN)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Unable to connect to database: %v\n", err))
+
+	}
+
+	err = db.Ping(ctx)
+	if err != nil {
+		log.Println("err ping")
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+	}
+
 	return c.String(http.StatusOK, "")
 }
