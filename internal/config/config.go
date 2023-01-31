@@ -14,7 +14,7 @@ type Config struct {
 	BaseURL         string
 	ServerAddress   string `env:"server_address"`
 	FileStoragePath string
-	DbDSN           string
+	DBDSN           string
 }
 
 func Get() *Config {
@@ -43,6 +43,6 @@ func Get() *Config {
 		BaseURL:         baseURL,
 		ServerAddress:   serverAddress,
 		FileStoragePath: *storage,
-		DbDSN:           *db,
+		DBDSN:           *db,
 	}
 }
