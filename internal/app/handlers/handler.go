@@ -225,7 +225,7 @@ func setUserIDInCookies(c echo.Context, userID string) {
 
 func (h Handlers) DBPing(c echo.Context) error {
 	log.Printf("handler DBPing передан database dsn %s", h.dbDSN)
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
 	db, err := pgx.Connect(ctx, h.dbDSN)
 	if err != nil {
@@ -239,6 +239,8 @@ func (h Handlers) DBPing(c echo.Context) error {
 		log.Println("err ping")
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
+
+	defer cancel()
 
 	return c.String(http.StatusOK, "")
 }
