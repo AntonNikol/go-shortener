@@ -1,0 +1,471 @@
+# -----------------------------------------------------------------------------
+# NOTES:
+# 1. You need to set profile. Available profiles:
+#    - devops
+#    - shortener
+# Profile 'devops' will run autotests for devops track.
+# Profile 'shortener' will run autotests for shortener track.
+# 2. Global services - services which are used in both tracks
+
+
+# Docker compose compat: https://docs.docker.com/compose/compose-file/compose-versioning/#compatibility-matrix
+version: "Compose specification"
+# -----------------------------------------------------------------------------
+# ---> EXTENSIONS (https://docs.docker.com/compose/compose-file/#extension)
+# -----------------------------------------------------------------------------
+# --> DEVOPS
+## used in service root section
+x-devops-default-conf: &devops-default-conf
+  image: devops-track
+  restart: "no"
+  stop_grace_period: 10s
+  profiles:
+    - devops
+## used in build section
+x-devops-build-conf: &devops-build-conf
+  context: .
+  args:
+    - YA_AGENT_BINARY_PATH=${YA_AGENT_BINARY_PATH:-cmd/agent/agent}
+    - YA_SERVER_BINARY_PATH=${YA_SERVER_BINARY_PATH:-cmd/server/server}
+  dockerfile: Dockerfile
+  target: devops-track
+# <-- DEVOPS
+# -----------------------------------------------------------------------------
+# --> SHORTENER
+## used in service root section
+x-shortener-default-conf: &shortener-default-conf
+  image: shortener-track
+  restart: "no"
+  stop_grace_period: 10s
+  profiles:
+    - shortener
+## used in build section
+x-shortener-build-conf: &shortener-build-conf
+  context: .
+  args:
+    - YA_BINARY_PATH=${YA_BINARY_PATH:-cmd/shortener/shortener}
+  dockerfile: Dockerfile
+  target: shortener-track
+# <-- SHORTENER
+# -----------------------------------------------------------------------------
+# <--- EXTENSIONS
+# -----------------------------------------------------------------------------
+services:
+  # -----------------------------------------------------------------------------
+  # ---> Global services
+  # -----------------------------------------------------------------------------
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: praktikum
+    profiles:
+      - devops
+      - shortener
+    expose:
+      # publish port on docker network
+      - "5432"
+    ports:
+      # exposed to host (host:container)
+      - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "praktikum", "-U", "postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: "no"
+    stop_grace_period: 10s
+  # -----------------------------------------------------------------------------
+  # <--- Global services
+  # -----------------------------------------------------------------------------
+  # -----------------------------------------------------------------------------
+  # ---> DevOps Track
+  # -----------------------------------------------------------------------------
+  # static-test will run go vet tool on project files
+  devops-static-test:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "go vet -vettool=$$(which statictest) ./...; \
+      if [ $? -eq 0 ]; then echo 'Go vet is passed successfully!'; else echo 'Go vet failed!'; fi"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 1
+  devops-01:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration1$ \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}'"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 2
+  devops-02:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration2[b]*$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}'"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 3
+  devops-03:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration3[b]*$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}'"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 4
+  devops-04:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration4$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}'"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 5
+  devops-05:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration5$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port)"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 6
+  devops-06:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration6$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -file-storage-path=$$(random tempfile)"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 7
+  devops-07:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration7$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -file-storage-path=$$(random tempfile)"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 8
+  devops-08:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration8$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -file-storage-path=$$(random tempfile)"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 9
+  devops-09:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration9$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -file-storage-path=$$(random tempfile) \
+      -key=$$(random tempfile)"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 10
+  devops-10:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration10[b]*$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -key=$$(random tempfile)"
+    depends_on:
+      - postgres
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 11
+  devops-11:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration11$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -key=$$(random tempfile)"
+    depends_on:
+      - postgres
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 12
+  devops-12:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration12$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -key=$$(random tempfile)"
+    depends_on:
+      - postgres
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 13
+  devops-13:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration13$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 14
+  devops-14:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "devopstest -test.v -test.run=^TestIteration14$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_SERVER_BINARY_PATH:-cmd/server/server}' \
+      -agent-binary-path='${YA_AGENT_BINARY_PATH:-cmd/agent/agent}' \
+      -server-port=$$(random unused-port) \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
+      -file-storage-path=$$(random tempfile) \
+      -key=$$(random tempfile)"
+    depends_on:
+      - postgres
+    build:
+      <<: *devops-build-conf
+  # INCREMENT 14-race
+  devops-14-race:
+    <<: *devops-default-conf
+    entrypoint:
+      /bin/bash -c "go test -v -race ./..."
+    build:
+      <<: *devops-build-conf
+  # -----------------------------------------------------------------------------
+  # <--- DevOps Track
+  # -----------------------------------------------------------------------------
+  # -----------------------------------------------------------------------------
+  # ---> Shortener Track
+  # -----------------------------------------------------------------------------
+  # static-test will run go vet tool on project files
+  shortener-static-test:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "go vet -vettool=$$(which statictest) ./...; \
+      if [ $? -eq 0 ]; then echo 'Go vet is passed successfully!'; else echo 'Go vet failed!'; fi"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 1
+  shortener-01:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration1$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 2
+  shortener-02:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration2$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 3
+  shortener-03:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration3$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 4
+  shortener-04:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration4$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 5
+  shortener-05:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "export SERVER_HOST=$$(random domain); export SERVER_PORT=$$(random unused-port); \
+      shortenertest -test.v -test.run=^TestIteration5$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -server-host=$$SERVER_HOST \
+      -server-port=$$SERVER_PORT \
+      -server-base-url='http://$$SERVER_HOST:$$SERVER_PORT'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 6
+  shortener-06:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration6$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -server-port=$$(random unused-port) \
+      -file-storage-path=$$(random tempfile)"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 7
+  shortener-07:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration7$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -server-port=$$(random unused-port) \
+      -file-storage-path=$$(random tempfile)"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 8
+  shortener-08:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration8$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 9
+  shortener-09:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration9$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 10
+  shortener-10:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration10$ \
+      -source-path='${YA_SOURCE_PATH:-.}' \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 11
+  shortener-11:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration11$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 12
+  shortener-12:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration12$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 13
+  shortener-13:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration13$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 14
+  shortener-14:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration14$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
+      -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 14-degradation
+  shortener-14-degradation:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration14$ \
+      -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 14-race
+  shortener-14-race:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "go test -v -race ./..."
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 15
+  shortener-15:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration15$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    depends_on:
+      - postgres
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 16
+  shortener-16:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration16$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    build:
+      <<: *shortener-build-conf
+  # INCREMENT 17
+  shortener-17:
+    <<: *shortener-default-conf
+    entrypoint:
+      /bin/bash -c "shortenertest -test.v -test.run=^TestIteration17$ \
+      -source-path='${YA_SOURCE_PATH:-.}'"
+    build:
+      <<: *shortener-build-conf
+# -----------------------------------------------------------------------------
+# <--- Shortener Track
+# -----------------------------------------------------------------------------
