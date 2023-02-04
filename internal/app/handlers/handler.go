@@ -82,7 +82,9 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
+	// начался хардкод
 	if h.dbDSN != "" {
+
 		// если работаем с БД, то возвращаем в качесте id h.baseURL + "/" + ID в таблице
 
 		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
@@ -126,10 +128,20 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
+	resultShortURL := item.ShortURL
+	// начался хардкод
+	if h.dbDSN != "" {
+		// если работаем с БД, то возвращаем в качесте id h.baseURL + "/" + ID в таблице
+		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
+		resultShortURL = h.baseURL + "/" + item.ID
+
+	}
+	// кончился
+
 	r, err := json.Marshal(struct {
 		Result string `json:"result"`
 	}{
-		Result: item.ShortURL,
+		Result: resultShortURL,
 	})
 
 	if err != nil {

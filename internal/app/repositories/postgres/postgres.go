@@ -37,21 +37,27 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 
 func (p Postgres) GetItemByID(id string) (models.Item, error) {
 	//TODO: откуда тут правильно тянуть контекст?!
-	rows, err := p.DB.QueryContext(context.Background(),
+	row := p.DB.QueryRowContext(context.Background(),
 		"SELECT id,full_url, short_url FROM short_links where id=$1", id)
 	// обязательно закрываем перед возвратом функции
-	defer rows.Close()
+	//defer rows.Close()
 
 	var i models.Item
 
-	// пробегаем по всем записям
-	for rows.Next() {
-		err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL)
-		if err != nil {
-			log.Printf("postgres GetItemByID Scan ошибка: %v", err)
+	//// пробегаем по всем записям
+	//for rows.Next() {
+	//	err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL)
+	//	if err != nil {
+	//		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
+	//
+	//		return models.Item{}, err
+	//	}
+	//}
+	err = row.Scan(&i.ID, &i.FullURL, &i.ShortURL)
+	if err != nil {
+		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 
-			return models.Item{}, err
-		}
+		return models.Item{}, repositories.ErrNotFound
 	}
 	if i.ShortURL == "" {
 		return models.Item{}, repositories.ErrNotFound
@@ -71,14 +77,20 @@ func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error)
 	// обязательно закрываем перед возвратом функции
 	defer rows.Close()
 
-	i := models.ItemResponse{}
 	// пробегаем по всем записям
+
 	for rows.Next() {
+		i := models.ItemResponse{}
 		err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL, &i.UserID)
 		if err != nil {
 			return nil, err
 		}
+
+		res = append(res, i)
 	}
+
+	log.Printf("postgres GetItemsByUserID Scan успех: %v", res)
+
 	// проверяем на ошибки
 	err = rows.Err()
 	if err != nil {
