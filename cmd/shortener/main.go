@@ -16,47 +16,6 @@ var repo repositories.Repository
 
 func main() {
 	cfg := config.Get()
-
-	//// open sql
-	//db, err := sql.Open("postgres",
-	//	"postgres://postgres:qwerty@localhost:5438/postgres?sslmode=disable")
-	//if err != nil {
-	//	panic(err)
-	//}
-	//defer db.Close()
-	//// работаем с базой
-	//// ...
-	//// можем продиагностировать соединение
-	//ctx := context.Background()
-	//ctx, cancel := context.WithTimeout(ctx, 1*time.Second)
-	//defer cancel()
-	//if err = db.PingContext(ctx); err != nil {
-	//	panic(err)
-	//}
-	//
-	//os.Exit(0)
-	//
-
-	//if cfg.DBDSN != "" {
-	//	log.Printf("Передан database dsn %s", cfg.DBDSN)
-	//	ctx, _ := context.WithCancel(context.Background())
-	//	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
-	//	//urlExample := "postgres://postgres:qwerty@localhost:5438/postgres"
-	//	conn, err := pgx.Connect(ctx, cfg.DBDSN)
-	//	if err != nil {
-	//		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-	//		os.Exit(1)
-	//	}
-	//
-	//	err = conn.Ping(ctx)
-	//	if err != nil {
-	//		log.Println("err ping")
-	//	}
-	//
-	//	log.Println("успешный пинг")
-	//	//
-	//}
-
 	ctx := context.Background()
 	// Определяем какой репозиторий будет использоваться - память или файл
 	if cfg.FileStoragePath != "" {
@@ -81,4 +40,13 @@ func main() {
 так как функций в классе уже много
 (!)4 Может быть стоит все зависимости закинуть в contextWithValue и передавать в server.go только его?
 
+//Часть по SQL
+5 В sql.Open не передается контекст, это норм?
+6 Как правильно тянуть контекст до GetItemById postgres
+7 Как в хендлере определить какая реализация репозитория и не вызывать метод generateRandomString для postgres
 */
+
+// Дела на завтра.
+// Инсерт с получением селекта назад
+// get item и getItemsByUser не возвращают данные
+// избавиться от проверки checkItemExist для запросов в БД
