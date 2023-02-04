@@ -10,6 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5"
+	"log"
 )
 
 var err error
@@ -20,18 +21,24 @@ type Postgres struct {
 
 func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 
-	_, err := p.DB.Exec("INSERT INTO short_links (full_url, short_url, user_id) values ($1, $2, $3)",
-		item.FullURL, item.ShortURL, item.UserID)
+	var id string
+	err := p.DB.QueryRow("INSERT INTO short_links (full_url, short_url, user_id) values ($1, $2, $3) RETURNING id",
+		item.FullURL, item.ShortURL, item.UserID).Scan(&id)
 	if err != nil {
+		log.Printf("postgres AddItem ошибка id: %s", id)
+
 		return models.Item{}, err
 	}
+	log.Printf("postgres AddItem успешно id: %s", id)
+
+	item.ID = id
 	return item, nil
 }
 
 func (p Postgres) GetItemByID(id string) (models.Item, error) {
 	//TODO: откуда тут правильно тянуть контекст?!
 	rows, err := p.DB.QueryContext(context.Background(),
-		"SELECT id,full_url, short_url FROM short_links where short_url=$1", id)
+		"SELECT id,full_url, short_url FROM short_links where id=$1", id)
 	// обязательно закрываем перед возвратом функции
 	defer rows.Close()
 
@@ -41,11 +48,18 @@ func (p Postgres) GetItemByID(id string) (models.Item, error) {
 	for rows.Next() {
 		err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL)
 		if err != nil {
+			log.Printf("postgres GetItemByID Scan ошибка: %v", err)
+
 			return models.Item{}, err
 		}
 	}
+	if i.ShortURL == "" {
+		return models.Item{}, repositories.ErrNotFound
+	}
 
-	return i, repositories.ErrNotFound
+	log.Printf("postgres GetItemByID Scan успех: %v", i)
+
+	return i, nil
 }
 
 func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error) {

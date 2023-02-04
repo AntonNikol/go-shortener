@@ -64,6 +64,12 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		setUserIDInCookies(c, userID)
 	}
 
+	/*
+		Эту логику нужно как-то отделить в хендлере.
+		При работе с БД я возвращаю в качестве ID таблицы, чтобы по нему потом получить запись
+		При этом поле shortUrl хранит в себе другой идентификатор
+	*/
+
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/" + randomString,
@@ -74,6 +80,14 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	item, err = h.repository.AddItem(item)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if h.dbDSN != "" {
+		// если работаем с БД, то возвращаем в качесте id h.baseURL + "/" + ID в таблице
+
+		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
+		return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
+
 	}
 	return c.String(http.StatusCreated, item.ShortURL)
 }
