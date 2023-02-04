@@ -74,6 +74,10 @@ func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error)
 	//TODO: откуда тут правильно тянуть контекст?!
 	rows, err := p.DB.QueryContext(context.Background(),
 		"SELECT id,full_url, short_url, user_id FROM short_links where user_id=$1", userID)
+
+	if err != nil {
+		return nil, err
+	}
 	// обязательно закрываем перед возвратом функции
 	defer rows.Close()
 
