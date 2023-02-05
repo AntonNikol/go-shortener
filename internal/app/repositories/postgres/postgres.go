@@ -23,8 +23,8 @@ type Postgres struct {
 func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 
 	var id string
-	err := p.DB.QueryRow("INSERT INTO short_links (full_url, short_url, user_id) values ($1, $2, $3) RETURNING id",
-		item.FullURL, item.ShortURL, item.UserID).Scan(&id)
+	err := p.DB.QueryRow("INSERT INTO short_links (full_url, user_id) values ($1, $2) RETURNING id",
+		item.FullURL, item.UserID).Scan(&id)
 	if err != nil {
 		log.Printf("postgres AddItem ошибка id: %s", id)
 
@@ -39,28 +39,14 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 func (p Postgres) GetItemByID(id string) (models.Item, error) {
 	//TODO: откуда тут правильно тянуть контекст?!
 	row := p.DB.QueryRowContext(context.Background(),
-		"SELECT id,full_url, short_url FROM short_links where id=$1", id)
-	// обязательно закрываем перед возвратом функции
-	//defer rows.Close()
+		"SELECT id,full_url FROM short_links where id=$1", id)
 
 	var i models.Item
 
-	//// пробегаем по всем записям
-	//for rows.Next() {
-	//	err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL)
-	//	if err != nil {
-	//		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
-	//
-	//		return models.Item{}, err
-	//	}
-	//}
-	err = row.Scan(&i.ID, &i.FullURL, &i.ShortURL)
+	err = row.Scan(&i.ID, &i.FullURL)
 	if err != nil {
 		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 
-		return models.Item{}, repositories.ErrNotFound
-	}
-	if i.ShortURL == "" {
 		return models.Item{}, repositories.ErrNotFound
 	}
 
@@ -74,7 +60,7 @@ func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error)
 
 	//TODO: откуда тут правильно тянуть контекст?!
 	rows, err := p.DB.QueryContext(context.Background(),
-		"SELECT id,full_url, short_url, user_id FROM short_links where user_id=$1", userID)
+		"SELECT id,full_url, user_id FROM short_links where user_id=$1", userID)
 
 	if err != nil {
 		return nil, err
@@ -86,7 +72,7 @@ func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error)
 
 	for rows.Next() {
 		i := models.ItemResponse{}
-		err = rows.Scan(&i.ID, &i.FullURL, &i.ShortURL, &i.UserID)
+		err = rows.Scan(&i.ID, &i.FullURL, &i.UserID)
 		if err != nil {
 			return nil, err
 		}
@@ -153,7 +139,8 @@ func (p Postgres) AddItemsList(items map[string]models.Item) (map[string]models.
 	defer tx.Rollback()
 
 	// шаг 2 — готовим инструкцию
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url) VALUES($1) RETURNING id")
+	//TODO: user_id проверять на null
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url,user_id) VALUES($1, $2) RETURNING id")
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +150,7 @@ func (p Postgres) AddItemsList(items map[string]models.Item) (map[string]models.
 	var id string
 	for k, v := range items {
 		// шаг 3 — указываем, что каждое видео будет добавлено в транзакцию
-		err := stmt.QueryRowContext(ctx, v.FullURL).Scan(&id)
+		err := stmt.QueryRowContext(ctx, v.FullURL, v.UserID).Scan(&id)
 		if err != nil {
 			return nil, err
 		}

@@ -49,11 +49,6 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid url")
 	}
 
-	randomString, err := h.generateUniqueItemID("")
-	if err != nil {
-		log.Printf("Ошибка генерации item ID %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-	}
 	//Если в куках передан UserID берем его - иначе генерируем новый
 	userID, err := getUserIDFromCookies(c)
 	if err != nil {
@@ -66,34 +61,40 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		setUserIDInCookies(c, userID)
 	}
 
-	/*
-		Эту логику нужно как-то отделить в хэндлере.
-		При работе с БД я возвращаю в качестве ID номер записи таблицы, чтобы по нему потом получить запись
-		При этом поле shortUrl хранит в себе другой идентификатор
-	*/
-
-	item := models.Item{
-		FullURL:  string(body),
-		ShortURL: h.baseURL + "/" + randomString,
-		ID:       randomString,
-		UserID:   userID,
-	}
-
-	item, err = h.repository.AddItem(item)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-	}
-
-	// начался хардкод
+	// если используется БД, то ID генерировать не нужно
 	if h.dbDSN != "" {
+		item := models.Item{
+			FullURL: string(body),
+			UserID:  userID,
+		}
 
-		// если работаем с БД, то возвращаем в качестве id h.baseURL + "/" + ID в таблице
-
-		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
+		item, err = h.repository.AddItem(item)
+		item.ShortURL = h.baseURL + "/" + item.ID
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
 		return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
 
+	} else {
+		randomString, err := h.generateUniqueItemID("")
+		if err != nil {
+			log.Printf("Ошибка генерации item ID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
+		item := models.Item{
+			FullURL:  string(body),
+			ShortURL: h.baseURL + "/" + randomString,
+			ID:       randomString,
+			UserID:   userID,
+		}
+
+		item, err = h.repository.AddItem(item)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		return c.String(http.StatusCreated, item.ShortURL)
+
 	}
-	return c.String(http.StatusCreated, item.ShortURL)
 }
 
 func (h Handlers) CreateItemJSON(c echo.Context) error {
@@ -180,6 +181,22 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 		return c.String(http.StatusNoContent, "")
 	}
 	log.Printf("GetItemsByUserID найдено items: %d", len(items))
+
+	if h.dbDSN != "" {
+		var result []models.ItemResponse
+		for _, v := range items {
+			log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
+
+			v.ShortURL = h.baseURL + "/" + v.ID
+			result = append(result, v)
+
+			log.Printf("Подстановка v.ShortURL стало: %s", v.ShortURL)
+		}
+		log.Printf("итоговый items: %s", result)
+
+		return c.JSON(http.StatusOK, result)
+
+	}
 
 	return c.JSON(http.StatusOK, items)
 }
