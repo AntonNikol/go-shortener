@@ -174,10 +174,7 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 
 			v.ShortURL = h.baseURL + "/" + v.ID
 			result = append(result, v)
-
-			log.Printf("Подстановка v.ShortURL стало: %s", v.ShortURL)
 		}
-		log.Printf("итоговый items: %s", result)
 
 		return c.JSON(http.StatusOK, result)
 
@@ -278,11 +275,24 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
+	//Если в куках передан UserID берем его - иначе генерируем новый
+	userID, err := getUserIDFromCookies(c)
+	if err != nil {
+		userID, err = generateUserID()
+		if err != nil {
+			log.Printf("ошибка генерации UserID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
+		// Устанавливаем куки в заголовки
+		setUserIDInCookies(c, userID)
+	}
+
 	// Собираем мапу айтемсов
 	items := make(map[string]models.Item)
 	for _, v := range itemsRequest {
 		item := models.Item{
 			FullURL: v.OriginalURL,
+			UserID:  userID,
 		}
 		items[v.ID] = item
 	}
