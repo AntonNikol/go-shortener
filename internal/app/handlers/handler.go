@@ -32,6 +32,8 @@ func New(baseURL string, repository repositories.Repository, dbDSN string) *Hand
 }
 
 func (h Handlers) CreateItem(c echo.Context) error {
+	//TODO: надо понять как проверять что используется БД и не делать генерацию id
+
 	body, err := io.ReadAll(c.Request().Body)
 
 	if err != nil {
@@ -65,8 +67,8 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	}
 
 	/*
-		Эту логику нужно как-то отделить в хендлере.
-		При работе с БД я возвращаю в качестве ID таблицы, чтобы по нему потом получить запись
+		Эту логику нужно как-то отделить в хэндлере.
+		При работе с БД я возвращаю в качестве ID номер записи таблицы, чтобы по нему потом получить запись
 		При этом поле shortUrl хранит в себе другой идентификатор
 	*/
 
@@ -85,7 +87,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	// начался хардкод
 	if h.dbDSN != "" {
 
-		// если работаем с БД, то возвращаем в качесте id h.baseURL + "/" + ID в таблице
+		// если работаем с БД, то возвращаем в качестве id h.baseURL + "/" + ID в таблице
 
 		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
 		return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
@@ -182,7 +184,7 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	return c.JSON(http.StatusOK, items)
 }
 
-// получение рандомного id
+// Получение рандомного id
 func (h Handlers) generateUniqueItemID(id string) (string, error) {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
@@ -202,7 +204,7 @@ func (h Handlers) generateUniqueItemID(id string) (string, error) {
 	return h.generateUniqueItemID(randomString)
 }
 
-// проверка есть ли в файле item с таким id
+// Проверка есть ли в файле item с таким id
 func (h Handlers) checkItemExist(id string) (bool, error) {
 	_, err := h.repository.GetItemByID(id)
 
@@ -255,4 +257,41 @@ func (h Handlers) DBPing(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, "")
+}
+
+func (h Handlers) CreateItemsList(c echo.Context) error {
+	body, err := io.ReadAll(c.Request().Body)
+	if len(body) == 0 {
+		return echo.NewHTTPError(http.StatusBadRequest, "Request body is required")
+	}
+
+	var itemsRequest []models.ItemList
+
+	err = json.Unmarshal(body, &itemsRequest)
+	if err != nil {
+		log.Printf("Ошибка парсинга json %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+	}
+
+	// Собираем мапу айтемсов
+	items := make(map[string]models.Item)
+	for _, v := range itemsRequest {
+		item := models.Item{
+			FullURL: v.OriginalURL,
+		}
+		items[v.ID] = item
+	}
+
+	result, err := h.repository.AddItemsList(items)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	var response []models.ItemList
+	for k, v := range result {
+		r := models.ItemList{ID: k, ShortURL: h.baseURL + "/" + v.ID}
+		response = append(response, r)
+	}
+	return c.JSON(http.StatusOK, response)
+
 }

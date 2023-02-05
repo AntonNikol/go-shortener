@@ -43,7 +43,12 @@ func main() {
 //Часть по SQL
 5 В sql.Open не передается контекст, это норм?
 6 Как правильно тянуть контекст до GetItemById postgres
-7 Как в хендлере определить какая реализация репозитория и не вызывать метод generateRandomString для postgres
+(!)7 Как в хендлере определить какая реализация репозитория и не вызывать метод generateRandomString для postgres
+8 "LastInsertId is not supported by this driver" не отрабатывает в postgres
+lastId, err := r.LastInsertId()
+		if err != nil {
+			return nil, err
+		}
 */
 
 // Дела на завтра.

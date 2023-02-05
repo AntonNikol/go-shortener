@@ -38,6 +38,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 
 	e.POST("/", h.CreateItem)
 	e.POST("api/shorten", h.CreateItemJSON)
+	e.POST("api/shorten/batch", h.CreateItemsList)
 	e.GET("/:id", h.GetItem)
 	e.GET("/api/user/urls", h.GetItemsByUserID)
 	e.GET("/ping", h.DBPing)

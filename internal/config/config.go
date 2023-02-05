@@ -7,13 +7,16 @@ import (
 
 // можно использовать библиотеку env config для парсинга флагов
 
-// Пример запуска сервера
-// go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
-//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:qwerty@localhost:5439/postgres?sslmode=disable"
+// Пример запуска сервера для работы с файлов
+//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
+// Пример запуска сервера для работы с БД
+//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable"
 
-// с БД
-// docker run --name=postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='qwerty' -p5438:5432 -d --rm postgres
-// go run cmd/shortener/main.go -d="postgres://postgres:qwerty@localhost:5439/postgres?sslmode=disable"
+// Запуск БД
+//  docker run --name=postgres_practicum -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='postgres' -p54322:5432 -d postgres
+
+// Откат миграций
+// migrate -source file://internal/migrations -database "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" down 1
 
 type Config struct {
 	BaseURL         string

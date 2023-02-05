@@ -56,3 +56,9 @@ func (r *Repository) GetItemsByUserID(userID string) ([]models.ItemResponse, err
 
 	return res, nil
 }
+
+func (r *Repository) AddItemsList(items map[string]models.Item) (map[string]models.Item, error) {
+	//return items, nil
+	//TODO: implements me
+	panic(errors.New("inmerory AddItemsList"))
+}

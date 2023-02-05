@@ -10,6 +10,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5"
+	_ "github.com/lib/pq"
 	"log"
 )
 
@@ -136,4 +137,43 @@ func New(ctx context.Context, DSN string) *Postgres {
 
 func (p Postgres) Ping(ctx context.Context) error {
 	return p.DB.Ping()
+}
+
+func (p Postgres) AddItemsList(items map[string]models.Item) (map[string]models.Item, error) {
+
+	result := map[string]models.Item{}
+	ctx := context.Background()
+
+	// шаг 1 — объявляем транзакцию
+	tx, err := p.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	// шаг 1.1 — если возникает ошибка, откатываем изменения
+	defer tx.Rollback()
+
+	// шаг 2 — готовим инструкцию
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url) VALUES($1) RETURNING id")
+	if err != nil {
+		return nil, err
+	}
+	// шаг 2.1 — не забываем закрыть инструкцию, когда она больше не нужна
+	defer stmt.Close()
+
+	var id string
+	for k, v := range items {
+		// шаг 3 — указываем, что каждое видео будет добавлено в транзакцию
+		err := stmt.QueryRowContext(ctx, v.FullURL).Scan(&id)
+		if err != nil {
+			return nil, err
+		}
+		result[k] = models.Item{ID: id}
+	}
+	// шаг 4 — сохраняем изменения
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
