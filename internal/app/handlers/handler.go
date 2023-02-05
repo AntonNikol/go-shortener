@@ -35,7 +35,6 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	//TODO: надо понять как проверять что используется БД и не делать генерацию id
 
 	body, err := io.ReadAll(c.Request().Body)
-
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
@@ -61,48 +60,28 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		setUserIDInCookies(c, userID)
 	}
 
-	// если используется БД, то ID генерировать не нужно
-	if h.dbDSN != "" {
-		item := models.Item{
-			FullURL: string(body),
-			UserID:  userID,
-		}
-
-		item, err = h.repository.AddItem(item)
-		item.ShortURL = h.baseURL + "/" + item.ID
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
-
-	} else {
-		randomString, err := h.generateUniqueItemID("")
+	randomString := ""
+	if h.dbDSN == "" {
+		randomString, err = h.generateUniqueItemID("")
 		if err != nil {
 			log.Printf("Ошибка генерации item ID %v", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		}
-		item := models.Item{
-			FullURL:  string(body),
-			ShortURL: h.baseURL + "/" + randomString,
-			ID:       randomString,
-			UserID:   userID,
-		}
-
-		item, err = h.repository.AddItem(item)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		return c.String(http.StatusCreated, item.ShortURL)
-
 	}
+	item := models.Item{
+		FullURL:  string(body),
+		ShortURL: h.baseURL + "/" + randomString,
+		ID:       randomString,
+		UserID:   userID,
+	}
+	item, err = h.repository.AddItem(item)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	return c.String(http.StatusCreated, item.ShortURL)
 }
 
 func (h Handlers) CreateItemJSON(c echo.Context) error {
-	randomString, err := h.generateUniqueItemID("")
-	if err != nil {
-		log.Printf("Ошибка генерации item ID %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-	}
 
 	//Если в куках передан UserID берем его - иначе генерируем новый
 	userID, err := getUserIDFromCookies(c)
@@ -121,6 +100,15 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 		log.Printf("handler CreateItemJSON json parsing error %v", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "JSON parsing error")
 	}
+	randomString := ""
+	if h.dbDSN == "" {
+		randomString, err = h.generateUniqueItemID("")
+		if err != nil {
+			log.Printf("Ошибка генерации item ID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		}
+	}
+
 	item.ShortURL = h.baseURL + "/" + randomString
 	item.ID = randomString
 	item.UserID = userID
@@ -132,14 +120,11 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	}
 
 	resultShortURL := item.ShortURL
-	// начался хардкод
-	if h.dbDSN != "" {
-		// если работаем с БД, то возвращаем в качесте id h.baseURL + "/" + ID в таблице
-		log.Printf("работаем с БД, возвращаем костыльный ответ. h.dbDSN = %s, item = %s", h.dbDSN, item)
-		resultShortURL = h.baseURL + "/" + item.ID
 
+	// TODO: перенести обработку сохранения при работе с БД
+	if h.dbDSN != "" {
+		resultShortURL = h.baseURL + "/" + item.ID
 	}
-	// кончился
 
 	r, err := json.Marshal(struct {
 		Result string `json:"result"`
@@ -278,6 +263,9 @@ func (h Handlers) DBPing(c echo.Context) error {
 
 func (h Handlers) CreateItemsList(c echo.Context) error {
 	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+	}
 	if len(body) == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "Request body is required")
 	}
@@ -309,6 +297,6 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		r := models.ItemList{ID: k, ShortURL: h.baseURL + "/" + v.ID}
 		response = append(response, r)
 	}
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusCreated, response)
 
 }
