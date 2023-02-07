@@ -48,31 +48,16 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid url")
 	}
 
-	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIDFromCookies(c)
+	user, err := c.Cookie("user_id")
 	if err != nil {
-		userID, err = generateUserID()
-		if err != nil {
-			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		}
-		// Устанавливаем куки в заголовки
-		setUserIDInCookies(c, userID)
+		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+
 	}
 
-	randomString := ""
-	if h.dbDSN == "" {
-		randomString, err = h.generateUniqueItemID("")
-		if err != nil {
-			log.Printf("Ошибка генерации item ID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		}
-	}
 	item := models.Item{
 		FullURL:  string(body),
-		ShortURL: h.baseURL + "/" + randomString,
-		ID:       randomString,
-		UserID:   userID,
+		ShortURL: h.baseURL + "/",
+		UserID:   user.Value,
 	}
 	item, err = h.repository.AddItem(item)
 	if err != nil {
@@ -233,8 +218,8 @@ func getUserIDFromCookies(c echo.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Println(cookie.Name)
-	fmt.Println(cookie.Value)
+	//fmt.Println(cookie.Name)
+	//fmt.Println(cookie.Value)
 	return cookie.Value, nil
 }
 
@@ -310,3 +295,5 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	return c.JSON(http.StatusCreated, response)
 
 }
+
+// TODO: генерацию в пакет pkg/generate

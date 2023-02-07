@@ -3,9 +3,12 @@ package inmemory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"log"
+	"math/rand"
+	"strconv"
 )
 
 type Repository struct {
@@ -61,4 +64,35 @@ func (r *Repository) AddItemsList(items map[string]models.Item) (map[string]mode
 	//return items, nil
 	//TODO: implements me
 	panic(errors.New("inmerory AddItemsList"))
+}
+
+// Получение рандомного id
+func (r *Repository) generateUniqueItemID(id string) (string, error) {
+	randomInt := rand.Intn(999999)
+	randomString := strconv.Itoa(randomInt)
+
+	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
+	exist, err := r.checkItemExist(randomString)
+	if err != nil {
+		return "", fmt.Errorf("unable to check item exist item by id: %w", err)
+	}
+
+	log.Printf("generateUniqueItemID exists id: %v", exist)
+
+	if randomString != id && !exist {
+		return randomString, nil
+	}
+
+	return r.generateUniqueItemID(randomString)
+}
+
+// Проверка есть ли в файле item с таким id
+func (r *Repository) checkItemExist(id string) (bool, error) {
+	_, err := r.GetItemByID(id)
+
+	// проверяем что ошибка не пустая и она не нот фаунд
+	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
+		return false, fmt.Errorf("unable to get item by id: %w", err)
+	}
+	return !errors.Is(err, repositories.ErrNotFound), nil
 }

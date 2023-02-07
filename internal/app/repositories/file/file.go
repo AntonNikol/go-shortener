@@ -3,12 +3,15 @@ package file
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"log"
+	"math/rand"
 	"os"
+	"strconv"
 )
 
 // встраивание реализации inmemory в file
@@ -20,7 +23,7 @@ import (
 
 type Repository struct {
 	repositories.Repository
-	//items    map[string]models.Item
+	items    map[string]models.Item
 	file     *os.File
 	filename string
 }
@@ -54,6 +57,13 @@ func New(filename string) *Repository {
 }
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {
+	id, err := r.generateUniqueItemID("")
+	if err != nil {
+		return models.Item{}, err
+	}
+	item.ID = id
+	item.ShortURL = item.ShortURL + id
+
 	data, err := json.Marshal(item)
 	if err != nil {
 		return models.Item{}, fmt.Errorf("unable serialise item %w", err)
@@ -85,4 +95,35 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	// записываем буфер в файл
 	writer.Flush()
 	return item, nil
+}
+
+// Получение рандомного id
+func (r *Repository) generateUniqueItemID(id string) (string, error) {
+	randomInt := rand.Intn(999999)
+	randomString := strconv.Itoa(randomInt)
+
+	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
+	exist, err := r.checkItemExist(randomString)
+	if err != nil {
+		return "", fmt.Errorf("unable to check item exist item by id: %w", err)
+	}
+
+	log.Printf("generateUniqueItemID exists id: %v", exist)
+
+	if randomString != id && !exist {
+		return randomString, nil
+	}
+
+	return r.generateUniqueItemID(randomString)
+}
+
+// Проверка есть ли в файле item с таким id
+func (r *Repository) checkItemExist(id string) (bool, error) {
+	_, err := r.GetItemByID(id)
+
+	// проверяем что ошибка не пустая и она не нот фаунд
+	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
+		return false, fmt.Errorf("unable to get item by id: %w", err)
+	}
+	return !errors.Is(err, repositories.ErrNotFound), nil
 }
