@@ -99,7 +99,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, struct {
 		Result string `json:"result"`
-	}{Result: item.ShortURL + item.ID})
+	}{Result: item.ShortURL})
 }
 
 func (h Handlers) GetItem(c echo.Context) error {

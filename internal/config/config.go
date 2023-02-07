@@ -8,7 +8,7 @@ import (
 // можно использовать библиотеку env config для парсинга флагов
 
 // Пример запуска сервера для работы с файлов
-//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
+// go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt
 // Пример запуска сервера для работы с БД
 //go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable"
 
