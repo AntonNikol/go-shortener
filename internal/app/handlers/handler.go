@@ -79,9 +79,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	if err != nil {
 		if errors.Is(err, postgres.UniqueViolation) {
 			log.Printf("UniqueViolation, item %v", item)
-			return echo.NewHTTPError(http.StatusConflict, item.FullURL)
-			//return c.String(http.StatusConflict, item.ShortURL)
-
+			return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
@@ -122,7 +120,12 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
-		log.Printf("Ошибка записи в файл %v", err)
+		if errors.Is(err, postgres.UniqueViolation) {
+			log.Printf("UniqueViolation, item %v", item)
+			return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
+		}
+
+		log.Printf("CreateItemJSON %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
