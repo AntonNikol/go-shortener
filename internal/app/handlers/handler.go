@@ -44,13 +44,16 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItem не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		//return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	item := models.Item{
 		FullURL:  string(body),
 		ShortURL: h.baseURL + "/",
-		UserID:   user.Value,
+		//UserID:   user.Value,
+	}
+	if user.Value != "" {
+		item.UserID = user.Value
 	}
 
 	item, err = h.repository.AddItem(item)
@@ -64,7 +67,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		//return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
 	item := models.Item{}
@@ -75,6 +78,11 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	item.ShortURL = h.baseURL + "/"
 	item.UserID = user.Value
+
+	//
+	if user.Value != "" {
+		item.UserID = user.Value
+	}
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
@@ -115,7 +123,9 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("GetItemsByUserID не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		//return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return c.String(http.StatusNoContent, "")
+
 	}
 
 	items, err := h.repository.GetItemsByUserID(user.Value)
@@ -180,7 +190,11 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	for _, v := range itemsRequest {
 		item := models.Item{
 			FullURL: v.OriginalURL,
-			UserID:  user.Value,
+			//UserID:  user.Value,
+		}
+		//
+		if user.Value != "" {
+			item.UserID = user.Value
 		}
 		items[v.ID] = item
 	}
