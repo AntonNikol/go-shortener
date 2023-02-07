@@ -128,12 +128,9 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	}
 	log.Printf("GetItemsByUserID найдено items: %d", len(items))
 
-	//TODO: 1
 	if h.dbDSN != "" {
 		var result []models.ItemResponse
 		for _, v := range items {
-			log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
-
 			v.ShortURL = h.baseURL + "/" + v.ID
 			result = append(result, v)
 		}

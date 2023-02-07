@@ -12,9 +12,9 @@ import (
 func CookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("user_id")
-		log.Printf("userCookieMiddleware чтение куки, ошибка %v", err)
 
 		if err != nil || cookie.Value == "" {
+			log.Printf("userCookieMiddleware чтение куки, ошибка %v", err)
 			log.Printf("userCookieMiddleware куки пустые. пишем новые")
 			userID, err := generateUserID()
 			if err != nil {
@@ -33,7 +33,7 @@ func CookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			c.Request().AddCookie(cookie)
 		}
 
-		log.Println("userCookieMiddleware конец мидлвара")
+		//log.Println("userCookieMiddleware конец мидлвара")
 		return next(c)
 	}
 }
