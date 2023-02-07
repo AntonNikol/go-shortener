@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
@@ -76,6 +77,12 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	}
 	item, err = h.repository.AddItem(item)
 	if err != nil {
+		if errors.Is(err, postgres.UniqueViolation) {
+			log.Printf("UniqueViolation, item %v", item)
+			return echo.NewHTTPError(http.StatusConflict, item.FullURL)
+			//return c.String(http.StatusConflict, item.ShortURL)
+
+		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return c.String(http.StatusCreated, item.ShortURL)

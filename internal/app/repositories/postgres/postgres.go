@@ -9,12 +9,16 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"log"
+	"strings"
 )
 
 var err error
+
+var UniqueViolation = errors.New(pgerrcode.UniqueViolation)
 
 type Postgres struct {
 	DB *sql.DB
@@ -23,17 +27,44 @@ type Postgres struct {
 func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 
 	var id string
-	err := p.DB.QueryRow("INSERT INTO short_links (full_url, user_id) values ($1, $2) RETURNING id",
+	err := p.DB.QueryRow("INSERT INTO short_links (full_url, user_id) values ($1, $2) "+
+		//"ON CONFLICT (full_url) DO NOTHING"+
+		"  RETURNING id ",
 		item.FullURL, item.UserID).Scan(&id)
 	if err != nil {
-		log.Printf("postgres AddItem ошибка id: %s", id)
+		log.Printf("postgres AddItem ошибка : %v", err)
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 
+			//Получаем запись по full_url
+			log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
+			item, err = p.GetItemByFullUrl(item.FullURL)
+			if err != nil {
+				return models.Item{}, repositories.ErrNotFound
+			}
+
+			return item, UniqueViolation
+		}
 		return models.Item{}, err
 	}
 	log.Printf("postgres AddItem успешно id: %s", id)
 
 	item.ID = id
 	return item, nil
+}
+
+func (p Postgres) GetItemByFullUrl(fullURL string) (models.Item, error) {
+	row := p.DB.QueryRowContext(context.Background(),
+		"SELECT id,full_url FROM short_links where full_url=$1", fullURL)
+
+	var i models.Item
+
+	err = row.Scan(&i.ID, &i.FullURL)
+	if err != nil {
+		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
+
+		return models.Item{}, repositories.ErrNotFound
+	}
+	return i, nil
 }
 
 func (p Postgres) GetItemByID(id string) (models.Item, error) {

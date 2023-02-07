@@ -12,6 +12,7 @@ import (
 // Пример запуска сервера для работы с БД
 //go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable"
 
+// создание миграции  migrate create -ext sql -dir ./internal/migrations -seq alter_table_short_links
 // Запуск БД
 //  docker run --name=postgres_practicum -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='postgres' -p54322:5432 -d postgres
 

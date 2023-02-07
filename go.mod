@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/golang-migrate/migrate/v4 v4.15.2
+	github.com/jackc/pgerrcode v0.0.0-20201024163028-a0d42d470451
 	github.com/jackc/pgx/v5 v5.2.0
 	github.com/labstack/echo/v4 v4.9.1
 	github.com/lib/pq v1.10.7

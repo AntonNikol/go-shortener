@@ -1,4 +1,4 @@
-CREATE TABLE short_links
+CREATE TABLE IF NOT EXISTS short_links
 (
     id        serial primary key,
     full_url  varchar(255) not null ,
