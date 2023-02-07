@@ -27,6 +27,12 @@ func (r *Repository) Ping(ctx context.Context) error {
 
 func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	// добавляем в мапу items
+	id, err := r.generateUniqueItemID("")
+	if err != nil {
+		return models.Item{}, err
+	}
+	item.ID = id
+	item.ShortURL = item.ShortURL + id
 	r.items[item.ID] = item
 	return item, nil
 }

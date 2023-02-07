@@ -33,6 +33,7 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 	log.Printf("postgres AddItem успешно id: %s", id)
 
 	item.ID = id
+	item.ShortURL = item.ShortURL + item.ID
 	return item, nil
 }
 
@@ -58,6 +59,7 @@ func (p Postgres) GetItemByID(id string) (models.Item, error) {
 func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error) {
 	var res []models.ItemResponse
 
+	//TODO: 2
 	//TODO: откуда тут правильно тянуть контекст?!
 	rows, err := p.DB.QueryContext(context.Background(),
 		"SELECT id,full_url, user_id FROM short_links where user_id=$1", userID)
