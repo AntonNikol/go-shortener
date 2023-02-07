@@ -36,6 +36,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
+		log.Printf("CreateItem не удалось прочитать body %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
@@ -50,8 +51,8 @@ func (h Handlers) CreateItem(c echo.Context) error {
 
 	user, err := c.Cookie("user_id")
 	if err != nil {
+		log.Printf("CreateItem не удалось прочитать куки %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-
 	}
 
 	item := models.Item{

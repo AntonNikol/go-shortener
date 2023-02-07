@@ -21,7 +21,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 
 	// Routes
 	e := echo.New()
-	e.Use(carryContextMiddleware(ctx), userCookieMiddleware)
+	e.Use(carryContextMiddleware(ctx))
 
 	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
@@ -37,6 +37,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 		},
 	}))
 
+	e.Use(userCookieMiddleware)
 	e.POST("/", h.CreateItem)
 	e.POST("api/shorten", h.CreateItemJSON)
 	e.POST("api/shorten/batch", h.CreateItemsList)
@@ -66,12 +67,13 @@ func carryContextMiddleware(ctx context.Context) func(next echo.HandlerFunc) ech
 func userCookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("user_id")
-		if err != nil {
-			return err
-		}
-		if cookie.Value == "" {
+		log.Printf("userCookieMiddleware чтение куки, ошибка %v", err)
+
+		if err != nil || cookie.Value == "" {
+			log.Printf("userCookieMiddleware куки пустые. пишем новые")
 			userID, err := generateUserID()
 			if err != nil {
+				log.Printf("userCookieMiddleware generateUserID ошибка %v", err)
 				return err
 			}
 			// Устанавливаем куки в заголовки
@@ -80,8 +82,13 @@ func userCookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			cookie.Value = userID
 			cookie.Expires = time.Now().Add(24 * time.Hour)
 			c.SetCookie(cookie)
+			log.Println("userCookieMiddleware куки установлены")
+
+			//Как установить куки в заголовки запроса
+			c.Request().AddCookie(cookie)
 		}
 
+		log.Println("userCookieMiddleware конец мидлвара")
 		return next(c)
 	}
 }
@@ -97,16 +104,3 @@ func generateUserID() (string, error) {
 
 	return hex.EncodeToString(b), nil
 }
-
-//
-//////Если в куках передан UserID берем его - иначе генерируем новый
-//userID, err := getUserIDFromCookies(c)
-//if err != nil {
-//userID, err = generateUserID()
-//if err != nil {
-//log.Printf("ошибка генерации UserID %v", err)
-//return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-//}
-//// Устанавливаем куки в заголовки
-//setUserIDInCookies(c, userID)
-////}
