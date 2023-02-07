@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
@@ -55,6 +57,11 @@ func (h Handlers) CreateItem(c echo.Context) error {
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
+		if errors.Is(err, postgres.ErrUniqueViolation) {
+			log.Printf("ErrUniqueViolation, item %v", item)
+			return c.String(http.StatusConflict, h.baseURL+"/"+item.ID)
+		}
+		log.Printf("Handler AddItem, метод repository.AddItem, ошибка %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 	return c.String(http.StatusCreated, item.ShortURL)
@@ -78,25 +85,19 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
-		log.Printf("Ошибка записи в файл %v", err)
+		if errors.Is(err, postgres.ErrUniqueViolation) {
+			log.Printf("ErrUniqueViolation, item %v", item)
+			return c.JSON(http.StatusConflict, struct {
+				Result string `json:"result"`
+			}{Result: h.baseURL + "/" + item.ID})
+		}
+		log.Printf("CreateItemJSON err: %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 	}
 
-	resultShortURL := item.ShortURL + item.ID
-
-	r, err := json.Marshal(struct {
+	return c.JSON(http.StatusCreated, struct {
 		Result string `json:"result"`
-	}{
-		Result: resultShortURL,
-	})
-
-	if err != nil {
-		log.Printf("Ошибка сериализации json %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-	}
-
-	c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
-	return c.String(http.StatusCreated, string(r))
+	}{Result: item.ShortURL + item.ID})
 }
 
 func (h Handlers) GetItem(c echo.Context) error {

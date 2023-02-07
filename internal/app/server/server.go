@@ -2,17 +2,15 @@ package server
 
 import (
 	"context"
-	"encoding/hex"
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
+	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
-	"math/rand"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
@@ -37,7 +35,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 		},
 	}))
 
-	e.Use(userCookieMiddleware)
+	e.Use(middlewares.CookieMiddleware)
 	e.POST("/", h.CreateItem)
 	e.POST("api/shorten", h.CreateItemJSON)
 	e.POST("api/shorten/batch", h.CreateItemsList)
@@ -62,45 +60,4 @@ func carryContextMiddleware(ctx context.Context) func(next echo.HandlerFunc) ech
 			return next(c)
 		}
 	}
-}
-
-func userCookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		cookie, err := c.Cookie("user_id")
-		log.Printf("userCookieMiddleware чтение куки, ошибка %v", err)
-
-		if err != nil || cookie.Value == "" {
-			log.Printf("userCookieMiddleware куки пустые. пишем новые")
-			userID, err := generateUserID()
-			if err != nil {
-				log.Printf("userCookieMiddleware generateUserID ошибка %v", err)
-				return err
-			}
-			// Устанавливаем куки в заголовки
-			cookie := new(http.Cookie)
-			cookie.Name = "user_id"
-			cookie.Value = userID
-			cookie.Expires = time.Now().Add(24 * time.Hour)
-			c.SetCookie(cookie)
-			log.Println("userCookieMiddleware куки установлены")
-
-			//Как установить куки в заголовки запроса
-			c.Request().AddCookie(cookie)
-		}
-
-		log.Println("userCookieMiddleware конец мидлвара")
-		return next(c)
-	}
-}
-
-func generateUserID() (string, error) {
-	// определяем слайс нужной длины
-	b := make([]byte, 16)
-	_, err := rand.Read(b) // записываем байты в массив b
-	if err != nil {
-		log.Printf("generateUserID error: %v\n", err)
-		return "", err
-	}
-
-	return hex.EncodeToString(b), nil
 }
