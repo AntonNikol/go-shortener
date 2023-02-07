@@ -18,7 +18,7 @@ import (
 
 var err error
 
-var UniqueViolation = errors.New(pgerrcode.UniqueViolation)
+var ErrUniqueViolation = errors.New(pgerrcode.UniqueViolation)
 
 type Postgres struct {
 	DB *sql.DB
@@ -37,12 +37,12 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 
 			//Получаем запись по full_url
 			log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
-			item, err = p.GetItemByFullUrl(item.FullURL)
+			item, err = p.GetItemByFullURL(item.FullURL)
 			if err != nil {
 				return models.Item{}, repositories.ErrNotFound
 			}
 
-			return item, UniqueViolation
+			return item, ErrUniqueViolation
 		}
 		return models.Item{}, err
 	}
@@ -52,7 +52,7 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 	return item, nil
 }
 
-func (p Postgres) GetItemByFullUrl(fullURL string) (models.Item, error) {
+func (p Postgres) GetItemByFullURL(fullURL string) (models.Item, error) {
 	row := p.DB.QueryRowContext(context.Background(),
 		"SELECT id,full_url FROM short_links where full_url=$1", fullURL)
 

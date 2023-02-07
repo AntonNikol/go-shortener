@@ -75,10 +75,17 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		ID:       randomString,
 		UserID:   userID,
 	}
+
 	item, err = h.repository.AddItem(item)
+	// TODO: перенести обработку сохранения при работе с БД
+	if h.dbDSN != "" {
+		item.ShortURL = h.baseURL + "/" + item.ID
+		log.Printf("CreateItem, переопределил shorturl %v", item)
+
+	}
 	if err != nil {
-		if errors.Is(err, postgres.UniqueViolation) {
-			log.Printf("UniqueViolation, item %v", item)
+		if errors.Is(err, postgres.ErrUniqueViolation) {
+			log.Printf("ErrUniqueViolation, item %v", item)
 			return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -120,9 +127,23 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	item, err = h.repository.AddItem(item)
 	if err != nil {
-		if errors.Is(err, postgres.UniqueViolation) {
-			log.Printf("UniqueViolation, item %v", item)
-			return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
+		if errors.Is(err, postgres.ErrUniqueViolation) {
+			log.Printf("ErrUniqueViolation, item %v", item)
+			//return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
+
+			r, err := json.Marshal(struct {
+				Result string `json:"result"`
+			}{
+				Result: h.baseURL + "/" + item.ID,
+			})
+
+			if err != nil {
+				log.Printf("Ошибка сериализации json %v", err)
+				return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+			}
+
+			c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
+			return c.String(http.StatusConflict, string(r))
 		}
 
 		log.Printf("CreateItemJSON %v", err)
