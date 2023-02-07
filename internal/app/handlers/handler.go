@@ -13,6 +13,8 @@ import (
 	"net/url"
 )
 
+var IntServErr = "Internal Server Error"
+
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
@@ -31,7 +33,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		log.Printf("CreateItem не удалось прочитать body %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	if len(body) == 0 {
@@ -46,7 +48,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItem не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	item := models.Item{
@@ -55,7 +57,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		UserID:   user.Value,
 	}
 
-	item, err = h.repository.AddItem(item)
+	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUniqueViolation) {
 			log.Printf("ErrUniqueViolation, item %v", item)
@@ -71,7 +73,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	item := models.Item{}
@@ -83,7 +85,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	item.ShortURL = h.baseURL + "/"
 	item.UserID = user.Value
 
-	item, err = h.repository.AddItem(item)
+	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUniqueViolation) {
 			log.Printf("ErrUniqueViolation, item %v", item)
@@ -92,7 +94,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 			}{Result: h.baseURL + "/" + item.ID})
 		}
 		log.Printf("CreateItemJSON err: %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	return c.JSON(http.StatusCreated, struct {
@@ -103,7 +105,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 func (h Handlers) GetItem(c echo.Context) error {
 	id := c.Param("id")
 
-	item, err := h.repository.GetItemByID(id)
+	item, err := h.repository.GetItemByID(c.Request().Context(), id)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
@@ -116,10 +118,10 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("GetItemsByUserID не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
-	items, err := h.repository.GetItemsByUserID(user.Value)
+	items, err := h.repository.GetItemsByUserID(c.Request().Context(), user.Value)
 	if err != nil {
 		log.Printf("GetItemsByUserID ошибка: %v", err)
 		return c.String(http.StatusNoContent, "")
@@ -147,7 +149,7 @@ func (h Handlers) DBPing(c echo.Context) error {
 	err := h.repository.Ping(c.Request().Context())
 	if err != nil {
 		log.Println("err ping")
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	return c.String(http.StatusOK, "")
@@ -156,7 +158,7 @@ func (h Handlers) DBPing(c echo.Context) error {
 func (h Handlers) CreateItemsList(c echo.Context) error {
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 	if len(body) == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "Request body is required")
@@ -167,13 +169,13 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	err = json.Unmarshal(body, &itemsRequest)
 	if err != nil {
 		log.Printf("Ошибка парсинга json %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	// Собираем мапу айтемсов
@@ -186,9 +188,10 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		items[v.ID] = item
 	}
 
-	result, err := h.repository.AddItemsList(items)
+	result, err := h.repository.AddItemsList(c.Request().Context(), items)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		log.Printf("CreateItemsList unable use repository AddItemsList %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	var response []models.ItemList

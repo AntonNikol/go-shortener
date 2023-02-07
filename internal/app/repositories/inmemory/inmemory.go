@@ -25,9 +25,9 @@ func (r *Repository) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repository) AddItem(item models.Item) (models.Item, error) {
+func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
 	// добавляем в мапу items
-	id, err := r.generateUniqueItemID("")
+	id, err := r.generateUniqueItemID(ctx, "")
 	if err != nil {
 		return models.Item{}, err
 	}
@@ -37,7 +37,7 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	return item, nil
 }
 
-func (r *Repository) GetItemByID(id string) (models.Item, error) {
+func (r *Repository) GetItemByID(ctx context.Context, id string) (models.Item, error) {
 	log.Println("GetItemById memory")
 
 	// проверяем мапу на наличие там айтема по ключу
@@ -49,7 +49,7 @@ func (r *Repository) GetItemByID(id string) (models.Item, error) {
 	return models.Item{}, repositories.ErrNotFound
 }
 
-func (r *Repository) GetItemsByUserID(userID string) ([]models.ItemResponse, error) {
+func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
 	log.Println("GetItemsByUserID memory")
 
 	res := make([]models.ItemResponse, 0)
@@ -66,19 +66,17 @@ func (r *Repository) GetItemsByUserID(userID string) ([]models.ItemResponse, err
 	return res, nil
 }
 
-func (r *Repository) AddItemsList(items map[string]models.Item) (map[string]models.Item, error) {
-	//return items, nil
-	//TODO: implements me
-	panic(errors.New("inmerory AddItemsList"))
+func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
+	return items, nil
 }
 
 // Получение рандомного id
-func (r *Repository) generateUniqueItemID(id string) (string, error) {
+func (r *Repository) generateUniqueItemID(ctx context.Context, id string) (string, error) {
 	randomInt := rand.Intn(999999)
 	randomString := strconv.Itoa(randomInt)
 
 	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
-	exist, err := r.checkItemExist(randomString)
+	exist, err := r.checkItemExist(ctx, randomString)
 	if err != nil {
 		return "", fmt.Errorf("unable to check item exist item by id: %w", err)
 	}
@@ -89,12 +87,12 @@ func (r *Repository) generateUniqueItemID(id string) (string, error) {
 		return randomString, nil
 	}
 
-	return r.generateUniqueItemID(randomString)
+	return r.generateUniqueItemID(ctx, randomString)
 }
 
 // Проверка есть ли в файле item с таким id
-func (r *Repository) checkItemExist(id string) (bool, error) {
-	_, err := r.GetItemByID(id)
+func (r *Repository) checkItemExist(ctx context.Context, id string) (bool, error) {
+	_, err := r.GetItemByID(ctx, id)
 
 	// проверяем что ошибка не пустая и она не нот фаунд
 	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
