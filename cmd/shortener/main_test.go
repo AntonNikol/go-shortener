@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
 	"net/http"
@@ -54,6 +55,7 @@ func Test_createItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -77,7 +79,6 @@ func Test_createItem(t *testing.T) {
 
 // Тест сокращения ссылки с JsonBody
 func Test_createItemJSON(t *testing.T) {
-
 	type want struct {
 		statusCode  int
 		response    string
@@ -110,6 +111,7 @@ func Test_createItemJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -182,6 +184,7 @@ func Test_getItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.want.location)))
 			rec := httptest.NewRecorder()
 			ctx := e.NewContext(req, rec)
