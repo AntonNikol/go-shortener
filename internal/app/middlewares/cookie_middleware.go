@@ -36,3 +36,9 @@ func CookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		return next(c)
 	}
 }
+
+//user, err := c.Cookie("user_id")
+//if err != nil {
+//log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+//return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+//}

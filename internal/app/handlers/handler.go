@@ -203,11 +203,16 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		log.Printf("Ошибка парсинга json %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
-
-	user, err := c.Cookie("user_id")
+	//Если в куках передан UserID берем его - иначе генерируем новый
+	userID, err := getUserIDFromCookies(c)
 	if err != nil {
-		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+		userID, err = generator.GenerateRandomID(userIDLength)
+		if err != nil {
+			log.Printf("ошибка генерации UserID %v", err)
+			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+		}
+		// Устанавливаем куки в заголовки
+		setUserIDInCookies(c, userID)
 	}
 
 	// Собираем мапу айтемсов
@@ -215,7 +220,7 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	for _, v := range itemsRequest {
 		item := models.Item{
 			FullURL: v.OriginalURL,
-			UserID:  user.Value,
+			UserID:  userID,
 		}
 		items[v.ID] = item
 	}
