@@ -62,20 +62,19 @@ func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]mod
 }
 
 func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
-	//newItems := map[string]models.Item{}
-	//// добавляем в мапу items
-	//
-	//for _, i := range items {
-	//	id, _ := generator.GenerateRandomID(3)
-	//	newItem := models.Item{
-	//		ID:      id,
-	//		FullURL: i.FullURL,
-	//	}
-	//	newItems[id] = newItem
-	//	log.Printf("inmemory AddItemsList добавляем item в новую мапу newItem %v", newItem)
-	//	r.items[id] = newItem
-	//}
-	//// добавляем newItems в items
-	//return newItems, nil
-	return items, nil
+	newItems := map[string]models.Item{}
+	// добавляем в мапу items
+
+	for k, i := range items {
+		id, _ := generator.GenerateRandomID(3)
+		newItem := models.Item{
+			ID:      id,
+			FullURL: i.FullURL,
+		}
+		newItems[k] = newItem
+		log.Printf("inmemory AddItemsList добавляем item в новую мапу newItem %v", newItem)
+		r.items[id] = newItem
+	}
+	// добавляем newItems в items
+	return newItems, nil
 }

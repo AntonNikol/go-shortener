@@ -141,7 +141,6 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	}
 	log.Printf("GetItemsByUserID найдено items: %d", len(items))
 
-	//if h.dbDSN != "" {
 	var result []models.ItemResponse
 	for _, v := range items {
 		log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
@@ -151,10 +150,6 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, result)
-
-	//}
-	//
-	//return c.JSON(http.StatusOK, items)
 }
 
 // Получение UserID из cookie
@@ -203,6 +198,7 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		log.Printf("Ошибка парсинга json %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
+
 	//Если в куках передан UserID берем его - иначе генерируем новый
 	userID, err := getUserIDFromCookies(c)
 	if err != nil {
@@ -230,6 +226,7 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		log.Printf("CreateItemsList unable use repository AddItemsList %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
+	log.Printf("получен result %+v", result)
 
 	var response []models.ItemList
 	for k, v := range result {
