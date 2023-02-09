@@ -11,9 +11,9 @@ var (
 )
 
 type Repository interface {
-	AddItem(item models.Item) (models.Item, error)
-	AddItemsList(map[string]models.Item) (map[string]models.Item, error)
-	GetItemByID(id string) (models.Item, error)
-	GetItemsByUserID(userID string) ([]models.ItemResponse, error)
+	AddItem(ctx context.Context, item models.Item) (models.Item, error)
+	AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error)
+	GetItemByID(ctx context.Context, id string) (models.Item, error)
+	GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error)
 	Ping(ctx context.Context) error
 }

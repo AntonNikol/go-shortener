@@ -17,6 +17,7 @@ var repo repositories.Repository
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
 
 	h := handlers.New(cfg.BaseURL, repo, cfg.DBDSN)
+	log.Printf("server.go мидлвары")
 
 	// Routes
 	e := echo.New()
@@ -35,6 +36,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 			return !strings.Contains(c.Request().Header.Get("Content-Encoding"), "gzip")
 		},
 	}))
+	log.Printf("server.go роуты")
 
 	e.POST("/", h.CreateItem)
 	e.POST("api/shorten", h.CreateItemJSON)

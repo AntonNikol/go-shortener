@@ -10,6 +10,7 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/config"
 	_ "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
+	"log"
 )
 
 var repo repositories.Repository
@@ -27,6 +28,7 @@ func main() {
 	if cfg.DBDSN != "" {
 		repo = repositories.Repository(postgres.New(ctx, cfg.DBDSN))
 	}
+	log.Printf("main go переходим к запуску сервера")
 
 	server.Run(ctx, cfg, repo)
 }

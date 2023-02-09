@@ -7,7 +7,9 @@ import (
 
 // можно использовать библиотеку env config для парсинга флагов
 
-// Пример запуска сервера для работы с файлов
+// Пример запуска сервера для работы с памятью
+//go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008
+// Пример запуска сервера для работы с файлом
 //go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
 // Пример запуска сервера для работы с БД
 //go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable"
@@ -17,7 +19,13 @@ import (
 //  docker run --name=postgres_practicum -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD='postgres' -p54322:5432 -d postgres
 
 // Откат миграций
-// migrate -source file://internal/migrations -database "postgresql://postgres:postgres@localhost:5432/postgres?sslmode=disable" down 1
+//  migrate -source file://./internal/migrations -database "postgresql://postgres:postgres@localhost:54322/postgres?sslmode=disable" down 1
+
+// запуск выбранного теста в нужной итерации
+// shortenertest -test.v -test.run=^TestIteration8/TestGzipCompress/shorten$ -binary-path=cmd/shortener/shortener
+
+// запуск автотестов докер
+// docker compose -f docker-compose.yml --profile shortener up --remove-orphans --force-recreate -d --build
 
 type Config struct {
 	BaseURL         string

@@ -24,20 +24,21 @@ type Postgres struct {
 	DB *sql.DB
 }
 
-func (p Postgres) AddItem(item models.Item) (models.Item, error) {
+func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
 
 	var id string
-	err := p.DB.QueryRow("INSERT INTO short_links (full_url, user_id) values ($1, $2) "+
+	err := p.DB.QueryRowContext(ctx, "INSERT INTO short_links (full_url, user_id) values ($1, $2) "+
 		//"ON CONFLICT (full_url) DO NOTHING"+
 		"  RETURNING id ",
 		item.FullURL, item.UserID).Scan(&id)
+
 	if err != nil {
 		log.Printf("postgres AddItem ошибка : %v", err)
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 
 			//Получаем запись по full_url
 			log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
-			item, err = p.GetItemByFullURL(item.FullURL)
+			item, err = p.GetItemByFullURL(ctx, item.FullURL)
 			if err != nil {
 				return models.Item{}, repositories.ErrNotFound
 			}
@@ -49,11 +50,12 @@ func (p Postgres) AddItem(item models.Item) (models.Item, error) {
 	log.Printf("postgres AddItem успешно id: %s", id)
 
 	item.ID = id
+	item.ShortURL = item.ShortURL + id
 	return item, nil
 }
 
-func (p Postgres) GetItemByFullURL(fullURL string) (models.Item, error) {
-	row := p.DB.QueryRowContext(context.Background(),
+func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.Item, error) {
+	row := p.DB.QueryRowContext(ctx,
 		"SELECT id,full_url FROM short_links where full_url=$1", fullURL)
 
 	var i models.Item
@@ -67,9 +69,8 @@ func (p Postgres) GetItemByFullURL(fullURL string) (models.Item, error) {
 	return i, nil
 }
 
-func (p Postgres) GetItemByID(id string) (models.Item, error) {
-	//TODO: откуда тут правильно тянуть контекст?!
-	row := p.DB.QueryRowContext(context.Background(),
+func (p Postgres) GetItemByID(ctx context.Context, id string) (models.Item, error) {
+	row := p.DB.QueryRowContext(ctx,
 		"SELECT id,full_url FROM short_links where id=$1", id)
 
 	var i models.Item
@@ -86,11 +87,9 @@ func (p Postgres) GetItemByID(id string) (models.Item, error) {
 	return i, nil
 }
 
-func (p Postgres) GetItemsByUserID(userID string) ([]models.ItemResponse, error) {
+func (p Postgres) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
 	var res []models.ItemResponse
-
-	//TODO: откуда тут правильно тянуть контекст?!
-	rows, err := p.DB.QueryContext(context.Background(),
+	rows, err := p.DB.QueryContext(ctx,
 		"SELECT id,full_url, user_id FROM short_links where user_id=$1", userID)
 
 	if err != nil {
@@ -156,10 +155,9 @@ func (p Postgres) Ping(ctx context.Context) error {
 	return p.DB.Ping()
 }
 
-func (p Postgres) AddItemsList(items map[string]models.Item) (map[string]models.Item, error) {
+func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
 
 	result := map[string]models.Item{}
-	ctx := context.Background()
 
 	// шаг 1 — объявляем транзакцию
 	tx, err := p.DB.Begin()

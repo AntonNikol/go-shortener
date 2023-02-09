@@ -2,11 +2,13 @@ package file
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
+	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"log"
 	"os"
 )
@@ -19,8 +21,8 @@ import (
 // и в file.go вызывать метод r.repository.GetItemByID
 
 type Repository struct {
-	repositories.Repository
-	//items    map[string]models.Item
+	//repositories.Repository
+	items    map[string]models.Item
 	file     *os.File
 	filename string
 }
@@ -32,7 +34,8 @@ func New(filename string) *Repository {
 		panic(err)
 	}
 
-	internal := inmemory.New()
+	//internal := inmemory.New()
+	items := map[string]models.Item{}
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -41,31 +44,41 @@ func New(filename string) *Repository {
 		if err := json.Unmarshal(scanner.Bytes(), &item); err != nil {
 			panic(err)
 		}
-		internal.AddItem(item)
+		//internal.AddItem(context.Background(), item)
+		items[item.ID] = item
 
 		log.Printf("Построчное чтение, item : %s", item)
 	}
 
 	return &Repository{
-		filename:   filename,
-		file:       file,
-		Repository: internal,
+		filename: filename,
+		file:     file,
+		//Repository: internal,
+		items: items,
 	}
 }
 
-func (r *Repository) AddItem(item models.Item) (models.Item, error) {
+func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
+	id, err := generator.GenerateRandomID(3)
+	if err != nil {
+		return models.Item{}, err
+	}
+	item.ID = id
+
 	data, err := json.Marshal(item)
 	if err != nil {
 		return models.Item{}, fmt.Errorf("unable serialise item %w", err)
 	}
 
-	// Тут добавляем item в Repository который положили в структуру (в этом случае inmemory),
-	// а в файл просто пишем новые строки чтобы при инициализации репозитория после перезапуска сервера
-	// заполнить мапу данными
-	_, err = r.Repository.AddItem(item)
-	if err != nil {
-		return models.Item{}, fmt.Errorf("unable to add item to internal repository: %w", err)
-	}
+	//// Тут добавляем item в Repository который положили в структуру (в этом случае inmemory),
+	//// а в файл просто пишем новые строки чтобы при инициализации репозитория после перезапуска сервера
+	//// заполнить мапу данными
+	//_, err = r.AddItem(ctx, item)
+	//if err != nil {
+	//	return models.Item{}, fmt.Errorf("unable to add item to internal repository: %w", err)
+	//}
+	//  кладем данные в память
+	r.items[id] = item
 
 	// пишем в буфер
 	writer := bufio.NewWriter(r.file)
@@ -85,4 +98,42 @@ func (r *Repository) AddItem(item models.Item) (models.Item, error) {
 	// записываем буфер в файл
 	writer.Flush()
 	return item, nil
+}
+
+func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
+	return items, nil
+}
+
+func (r *Repository) GetItemByID(ctx context.Context, id string) (models.Item, error) {
+	log.Println("GetItemById file")
+
+	// проверяем мапу на наличие там айтема по ключу
+	if res, ok := r.items[id]; ok {
+		log.Printf("Результат найден в мапе")
+		return res, nil
+	}
+
+	return models.Item{}, repositories.ErrNotFound
+}
+
+func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
+
+	log.Println("GetItemsByUserID file")
+
+	res := make([]models.ItemResponse, 0)
+	// проверяем мапу на наличие там айтема с userID
+	for _, v := range r.items {
+		if v.UserID == userID {
+			res = append(res, models.ItemResponse{FullURL: v.FullURL, ID: v.ID})
+		}
+	}
+	if len(res) == 0 {
+		return res, errors.New("items not found")
+	}
+
+	return res, nil
+}
+
+func (r *Repository) Ping(ctx context.Context) error {
+	return nil
 }

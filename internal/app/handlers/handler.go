@@ -1,20 +1,18 @@
 package handlers
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
+	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -23,6 +21,11 @@ type Handlers struct {
 	repository repositories.Repository
 	dbDSN      string
 }
+
+const (
+	userIDLength = 16
+	IntServErr   = "Internal Server Error"
+)
 
 func New(baseURL string, repository repositories.Repository, dbDSN string) *Handlers {
 	return &Handlers{
@@ -33,11 +36,9 @@ func New(baseURL string, repository repositories.Repository, dbDSN string) *Hand
 }
 
 func (h Handlers) CreateItem(c echo.Context) error {
-	//TODO: надо понять как проверять что используется БД и не делать генерацию id
-
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	if len(body) == 0 {
@@ -52,45 +53,29 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	//Если в куках передан UserID берем его - иначе генерируем новый
 	userID, err := getUserIDFromCookies(c)
 	if err != nil {
-		userID, err = generateUserID()
+		userID, err = generator.GenerateRandomID(userIDLength)
 		if err != nil {
 			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 		}
 		// Устанавливаем куки в заголовки
 		setUserIDInCookies(c, userID)
 	}
 
-	randomString := ""
-	if h.dbDSN == "" {
-		randomString, err = h.generateUniqueItemID("")
-		if err != nil {
-			log.Printf("Ошибка генерации item ID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		}
-	}
 	item := models.Item{
-		FullURL:  string(body),
-		ShortURL: h.baseURL + "/" + randomString,
-		ID:       randomString,
-		UserID:   userID,
+		FullURL: string(body),
+		UserID:  userID,
 	}
 
-	item, err = h.repository.AddItem(item)
-	// TODO: перенести обработку сохранения при работе с БД
-	if h.dbDSN != "" {
-		item.ShortURL = h.baseURL + "/" + item.ID
-		log.Printf("CreateItem, переопределил shorturl %v", item)
-
-	}
+	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUniqueViolation) {
 			log.Printf("ErrUniqueViolation, item %v", item)
-			return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
+			return c.String(http.StatusConflict, h.baseURL+"/"+item.ID)
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-	return c.String(http.StatusCreated, item.ShortURL)
+	return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
 }
 
 func (h Handlers) CreateItemJSON(c echo.Context) error {
@@ -98,10 +83,10 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	//Если в куках передан UserID берем его - иначе генерируем новый
 	userID, err := getUserIDFromCookies(c)
 	if err != nil {
-		userID, err = generateUserID()
+		userID, err = generator.GenerateRandomID(userIDLength)
 		if err != nil {
 			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 		}
 		// Устанавливаем куки в заголовки
 		setUserIDInCookies(c, userID)
@@ -112,70 +97,28 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 		log.Printf("handler CreateItemJSON json parsing error %v", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "JSON parsing error")
 	}
-	randomString := ""
-	if h.dbDSN == "" {
-		randomString, err = h.generateUniqueItemID("")
-		if err != nil {
-			log.Printf("Ошибка генерации item ID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		}
-	}
-
-	item.ShortURL = h.baseURL + "/" + randomString
-	item.ID = randomString
 	item.UserID = userID
-
-	item, err = h.repository.AddItem(item)
+	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
 		if errors.Is(err, postgres.ErrUniqueViolation) {
 			log.Printf("ErrUniqueViolation, item %v", item)
-			//return c.String(http.StatusConflict, h.baseURL+"/"+randomString+item.ID)
-
-			r, err := json.Marshal(struct {
+			return c.JSON(http.StatusConflict, struct {
 				Result string `json:"result"`
-			}{
-				Result: h.baseURL + "/" + item.ID,
-			})
-
-			if err != nil {
-				log.Printf("Ошибка сериализации json %v", err)
-				return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-			}
-
-			c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
-			return c.String(http.StatusConflict, string(r))
+			}{Result: h.baseURL + "/" + item.ID})
 		}
-
-		log.Printf("CreateItemJSON %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		log.Printf("CreateItemJSON err: %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
-	resultShortURL := item.ShortURL
-
-	// TODO: перенести обработку сохранения при работе с БД
-	if h.dbDSN != "" {
-		resultShortURL = h.baseURL + "/" + item.ID
-	}
-
-	r, err := json.Marshal(struct {
+	return c.JSON(http.StatusCreated, struct {
 		Result string `json:"result"`
-	}{
-		Result: resultShortURL,
-	})
-
-	if err != nil {
-		log.Printf("Ошибка сериализации json %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-	}
-
-	c.Response().Header().Set("Content-Type", "application/json; charset=UTF-8")
-	return c.String(http.StatusCreated, string(r))
+	}{Result: h.baseURL + "/" + item.ID})
 }
 
 func (h Handlers) GetItem(c echo.Context) error {
 	id := c.Param("id")
 
-	item, err := h.repository.GetItemByID(id)
+	item, err := h.repository.GetItemByID(c.Request().Context(), id)
 	if err != nil {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
@@ -191,71 +134,27 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 		return c.String(http.StatusNoContent, "")
 	}
 
-	items, err := h.repository.GetItemsByUserID(userID)
+	items, err := h.repository.GetItemsByUserID(c.Request().Context(), userID)
 	if err != nil {
 		log.Printf("GetItemsByUserID ошибка: %v", err)
 		return c.String(http.StatusNoContent, "")
 	}
 	log.Printf("GetItemsByUserID найдено items: %d", len(items))
 
-	if h.dbDSN != "" {
-		var result []models.ItemResponse
-		for _, v := range items {
-			log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
+	//if h.dbDSN != "" {
+	var result []models.ItemResponse
+	for _, v := range items {
+		log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
 
-			v.ShortURL = h.baseURL + "/" + v.ID
-			result = append(result, v)
-		}
-
-		return c.JSON(http.StatusOK, result)
-
+		v.ShortURL = h.baseURL + "/" + v.ID
+		result = append(result, v)
 	}
 
-	return c.JSON(http.StatusOK, items)
-}
+	return c.JSON(http.StatusOK, result)
 
-// Получение рандомного id
-func (h Handlers) generateUniqueItemID(id string) (string, error) {
-	randomInt := rand.Intn(999999)
-	randomString := strconv.Itoa(randomInt)
-
-	log.Printf("generateUniqueItemID Получение рандомного id: %s", id)
-	exist, err := h.checkItemExist(randomString)
-	if err != nil {
-		return "", fmt.Errorf("unable to check item exist item by id: %w", err)
-	}
-
-	log.Printf("generateUniqueItemID exists id: %v", exist)
-
-	if randomString != id && !exist {
-		return randomString, nil
-	}
-
-	return h.generateUniqueItemID(randomString)
-}
-
-// Проверка есть ли в файле item с таким id
-func (h Handlers) checkItemExist(id string) (bool, error) {
-	_, err := h.repository.GetItemByID(id)
-
-	// проверяем что ошибка не пустая и она не нот фаунд
-	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
-		return false, fmt.Errorf("unable to get item by id: %w", err)
-	}
-	return !errors.Is(err, repositories.ErrNotFound), nil
-}
-
-// Генерация уникального UserID
-func generateUserID() (string, error) {
-	// определяем слайс нужной длины
-	b := make([]byte, 16)
-	_, err := rand.Read(b) // записываем байты в массив b
-	if err != nil {
-		log.Printf("generateUserID error: %v\n", err)
-		return "", err
-	}
-
-	return hex.EncodeToString(b), nil
+	//}
+	//
+	//return c.JSON(http.StatusOK, items)
 }
 
 // Получение UserID из cookie
@@ -279,11 +178,10 @@ func setUserIDInCookies(c echo.Context, userID string) {
 }
 
 func (h Handlers) DBPing(c echo.Context) error {
-
 	err := h.repository.Ping(c.Request().Context())
 	if err != nil {
 		log.Println("err ping")
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	return c.String(http.StatusOK, "")
@@ -292,7 +190,7 @@ func (h Handlers) DBPing(c echo.Context) error {
 func (h Handlers) CreateItemsList(c echo.Context) error {
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 	if len(body) == 0 {
 		return echo.NewHTTPError(http.StatusBadRequest, "Request body is required")
@@ -303,19 +201,13 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	err = json.Unmarshal(body, &itemsRequest)
 	if err != nil {
 		log.Printf("Ошибка парсинга json %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
-	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIDFromCookies(c)
+	user, err := c.Cookie("user_id")
 	if err != nil {
-		userID, err = generateUserID()
-		if err != nil {
-			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
-		}
-		// Устанавливаем куки в заголовки
-		setUserIDInCookies(c, userID)
+		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	// Собираем мапу айтемсов
@@ -323,14 +215,15 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	for _, v := range itemsRequest {
 		item := models.Item{
 			FullURL: v.OriginalURL,
-			UserID:  userID,
+			UserID:  user.Value,
 		}
 		items[v.ID] = item
 	}
 
-	result, err := h.repository.AddItemsList(items)
+	result, err := h.repository.AddItemsList(c.Request().Context(), items)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		log.Printf("CreateItemsList unable use repository AddItemsList %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
 	var response []models.ItemList
@@ -339,5 +232,4 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		response = append(response, r)
 	}
 	return c.JSON(http.StatusCreated, response)
-
 }
