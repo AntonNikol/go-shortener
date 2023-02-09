@@ -7,7 +7,6 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
-	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
@@ -50,17 +49,24 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid url")
 	}
 
-	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIDFromCookies(c)
+	////Если в куках передан UserID берем его - иначе генерируем новый
+	//userID, err := getUserIDFromCookies(c)
+	//if err != nil {
+	//	userID, err = generator.GenerateRandomID(userIDLength)
+	//	if err != nil {
+	//		log.Printf("ошибка генерации UserID %v", err)
+	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+	//	}
+	//	// Устанавливаем куки в заголовки
+	//	setUserIDInCookies(c, userID)
+	//}
+
+	user, err := c.Cookie("user_id")
 	if err != nil {
-		userID, err = generator.GenerateRandomID(userIDLength)
-		if err != nil {
-			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-		}
-		// Устанавливаем куки в заголовки
-		setUserIDInCookies(c, userID)
+		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
+	userID := user.Value
 
 	item := models.Item{
 		FullURL: string(body),
@@ -81,16 +87,23 @@ func (h Handlers) CreateItem(c echo.Context) error {
 func (h Handlers) CreateItemJSON(c echo.Context) error {
 
 	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIDFromCookies(c)
+	//userID, err := getUserIDFromCookies(c)
+	//if err != nil {
+	//	userID, err = generator.GenerateRandomID(userIDLength)
+	//	if err != nil {
+	//		log.Printf("ошибка генерации UserID %v", err)
+	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+	//	}
+	//	// Устанавливаем куки в заголовки
+	//	setUserIDInCookies(c, userID)
+	//}
+
+	user, err := c.Cookie("user_id")
 	if err != nil {
-		userID, err = generator.GenerateRandomID(userIDLength)
-		if err != nil {
-			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-		}
-		// Устанавливаем куки в заголовки
-		setUserIDInCookies(c, userID)
+		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
+	userID := user.Value
 
 	item := models.Item{}
 	if err := c.Bind(&item); err != nil {
@@ -128,11 +141,18 @@ func (h Handlers) GetItem(c echo.Context) error {
 }
 
 func (h Handlers) GetItemsByUserID(c echo.Context) error {
-	// Если по юзеру ничего не найдено возвращаем 204
-	userID, err := getUserIDFromCookies(c)
+	//// Если по юзеру ничего не найдено возвращаем 204
+	//userID, err := getUserIDFromCookies(c)
+	//if err != nil {
+	//	return c.String(http.StatusNoContent, "")
+	//}
+
+	user, err := c.Cookie("user_id")
 	if err != nil {
-		return c.String(http.StatusNoContent, "")
+		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
+	userID := user.Value
 
 	items, err := h.repository.GetItemsByUserID(c.Request().Context(), userID)
 	if err != nil {
@@ -199,18 +219,24 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 
-	//Если в куках передан UserID берем его - иначе генерируем новый
-	userID, err := getUserIDFromCookies(c)
-	if err != nil {
-		userID, err = generator.GenerateRandomID(userIDLength)
-		if err != nil {
-			log.Printf("ошибка генерации UserID %v", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-		}
-		// Устанавливаем куки в заголовки
-		setUserIDInCookies(c, userID)
-	}
+	////Если в куках передан UserID берем его - иначе генерируем новый
+	//userID, err := getUserIDFromCookies(c)
+	//if err != nil {
+	//	userID, err = generator.GenerateRandomID(userIDLength)
+	//	if err != nil {
+	//		log.Printf("ошибка генерации UserID %v", err)
+	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+	//	}
+	//	// Устанавливаем куки в заголовки
+	//	setUserIDInCookies(c, userID)
+	//}
 
+	user, err := c.Cookie("user_id")
+	if err != nil {
+		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+	}
+	userID := user.Value
 	// Собираем мапу айтемсов
 	items := make(map[string]models.Item)
 	for _, v := range itemsRequest {

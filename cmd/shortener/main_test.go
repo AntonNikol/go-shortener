@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
+	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -54,9 +56,17 @@ func Test_createItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Debug = true
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+
+			ctx := e.NewContext(req, rec)
+			cookie := new(http.Cookie)
+			cookie.Name = "user_id"
+			cookie.Value, _ = generator.GenerateRandomID(16)
+			ctx.SetCookie(cookie)
 
 			// Проверки
 			if assert.NoError(t, h.CreateItem(c)) {
@@ -110,10 +120,18 @@ func Test_createItemJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Debug = true
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 			c.Request().Header.Set("Content-Type", "application/json")
+
+			ctx := e.NewContext(req, rec)
+			cookie := new(http.Cookie)
+			cookie.Name = "user_id"
+			cookie.Value, _ = generator.GenerateRandomID(16)
+			ctx.SetCookie(cookie)
 
 			// Проверки
 			if assert.NoError(t, h.CreateItemJSON(c)) {
@@ -182,6 +200,8 @@ func Test_getItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
+			e.Debug = true
+			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.want.location)))
 			rec := httptest.NewRecorder()
 			ctx := e.NewContext(req, rec)
@@ -215,3 +235,12 @@ func Test_getItem(t *testing.T) {
 		})
 	}
 }
+
+//
+//func setCookie(e *echo.Echo, req *http.Request, rec *httptest.ResponseRecorder) {
+//	c := e.NewContext(req, rec)
+//	cookie := new(http.Cookie)
+//	cookie.Name = "user_id"
+//	cookie.Value, _ = generator.GenerateRandomID(16)
+//	c.SetCookie(cookie)
+//}

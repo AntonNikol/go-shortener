@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
+	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/config"
 	"github.com/labstack/echo/v4"
@@ -12,7 +13,7 @@ import (
 	"strings"
 )
 
-var repo repositories.Repository
+//var repo repositories.Repository
 
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
 
@@ -22,6 +23,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 	// Routes
 	e := echo.New()
 	e.Use(carryContextMiddleware(ctx))
+	e.Use(middlewares.CookieMiddleware)
 
 	// Если в запросе клиента есть заголовок Accept-Encoding gzip, то используем сжатие
 	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
