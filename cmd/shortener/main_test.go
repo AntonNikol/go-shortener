@@ -56,17 +56,14 @@ func Test_createItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := echo.New()
-			e.Debug = true
-			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.body)))
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			ctx := e.NewContext(req, rec)
 			cookie := new(http.Cookie)
 			cookie.Name = "user_id"
 			cookie.Value, _ = generator.GenerateRandomID(16)
-			ctx.SetCookie(cookie)
+			c.Request().AddCookie(cookie)
 
 			// Проверки
 			if assert.NoError(t, h.CreateItem(c)) {
@@ -127,11 +124,10 @@ func Test_createItemJSON(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.Request().Header.Set("Content-Type", "application/json")
 
-			ctx := e.NewContext(req, rec)
 			cookie := new(http.Cookie)
 			cookie.Name = "user_id"
 			cookie.Value, _ = generator.GenerateRandomID(16)
-			ctx.SetCookie(cookie)
+			c.Request().AddCookie(cookie)
 
 			// Проверки
 			if assert.NoError(t, h.CreateItemJSON(c)) {
@@ -204,9 +200,14 @@ func Test_getItem(t *testing.T) {
 			e.Use(middlewares.CookieMiddleware)
 			req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBuffer([]byte(tt.want.location)))
 			rec := httptest.NewRecorder()
-			ctx := e.NewContext(req, rec)
+			c := e.NewContext(req, rec)
 
-			h.CreateItem(ctx)
+			cookie := new(http.Cookie)
+			cookie.Name = "user_id"
+			cookie.Value, _ = generator.GenerateRandomID(16)
+			c.Request().AddCookie(cookie)
+
+			h.CreateItem(c)
 			responseBody := rec.Body.String()
 
 			// Получаем id из ссылки
@@ -217,7 +218,7 @@ func Test_getItem(t *testing.T) {
 			req = httptest.NewRequest(http.MethodGet, "/", nil)
 			rec = httptest.NewRecorder()
 
-			c := e.NewContext(req, rec)
+			c = e.NewContext(req, rec)
 			c.SetPath("/:id")
 			c.SetParamNames("id")
 			c.SetParamValues(id)
