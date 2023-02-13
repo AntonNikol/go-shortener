@@ -162,7 +162,6 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 
 	err = json.Unmarshal(body, &itemsRequest)
 	if err != nil {
-		log.Printf("Ошибка парсинга json %v", err)
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
