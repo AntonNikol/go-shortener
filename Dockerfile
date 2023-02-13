@@ -24,7 +24,7 @@ RUN curl -L "https://go.dev/dl/go${GO_VERSION}.${TARGETOS}-${TARGETARCH}.tar.gz"
 # executables: devopstest, shortenertest (+goimports lib), statictest, random
 # (this step is need to support linux-arm64 docker hosts)
 FROM go as go-autotests
-ARG GO_AUTOTESTS_VERSION="v0.7.9"
+ARG GO_AUTOTESTS_VERSION="v0.7.10"
 WORKDIR /opt/devops_autotests
 RUN curl -L "https://github.com/Yandex-Practicum/go-autotests/archive/refs/tags/$GO_AUTOTESTS_VERSION.tar.gz" \
     | tar --strip=1 -xzf -
