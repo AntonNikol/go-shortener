@@ -122,31 +122,32 @@ func (p Postgres) GetItemsByUserID(ctx context.Context, userID string) ([]models
 
 }
 
-func New(ctx context.Context, DSN string) *Postgres {
+func New(ctx context.Context, DSN string) (*Postgres, error) {
 	db, err := sql.Open("postgres",
 		DSN)
 	if err != nil {
 		//fmt.Errorf("unable to connect db :%v", err)
-		panic(err)
+		//panic(err)
+		return nil, err
 	}
 
 	// накатка миграций
 	driver, err := postgres.WithInstance(db, &postgres.Config{})
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://./internal/migrations",
 		"postgres", driver)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		panic(err)
+		return nil, err
 	}
 
-	return &Postgres{DB: db}
+	return &Postgres{DB: db}, nil
 }
 
 func (p Postgres) Ping(ctx context.Context) error {

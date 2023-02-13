@@ -26,7 +26,11 @@ func main() {
 	}
 
 	if cfg.DBDSN != "" {
-		repo = repositories.Repository(postgres.New(ctx, cfg.DBDSN))
+		pgs, err := postgres.New(ctx, cfg.DBDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		repo = repositories.Repository(pgs)
 	}
 	log.Printf("main go переходим к запуску сервера")
 
