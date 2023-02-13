@@ -58,16 +58,16 @@ func New(filename string) *Repository {
 	}
 }
 
-func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
+func (r *Repository) AddItem(ctx context.Context, item models.Item) (*models.Item, error) {
 	id, err := generator.GenerateRandomID(3)
 	if err != nil {
-		return models.Item{}, err
+		return nil, err
 	}
 	item.ID = id
 
 	data, err := json.Marshal(item)
 	if err != nil {
-		return models.Item{}, fmt.Errorf("unable serialise item %w", err)
+		return nil, fmt.Errorf("unable serialise item %w", err)
 	}
 
 	//// Тут добавляем item в Repository который положили в структуру (в этом случае inmemory),
@@ -84,20 +84,20 @@ func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item
 	writer := bufio.NewWriter(r.file)
 	_, err = writer.Write(data)
 	if err != nil {
-		return models.Item{}, fmt.Errorf("unable to write file: %w", err)
+		return nil, fmt.Errorf("unable to write file: %w", err)
 	}
 
 	// добавляем перенос строки
 	_, err = writer.Write([]byte("\n"))
 	if err != nil {
-		return models.Item{}, fmt.Errorf("unable to write file: %w", err)
+		return nil, fmt.Errorf("unable to write file: %w", err)
 	}
 
 	log.Printf("Запись в файл произведена")
 
 	// записываем буфер в файл
 	writer.Flush()
-	return item, nil
+	return &item, nil
 }
 
 func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
@@ -139,16 +139,16 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 	return newItems, nil
 }
 
-func (r *Repository) GetItemByID(ctx context.Context, id string) (models.Item, error) {
+func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	log.Println("GetItemById file")
 
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
 		log.Printf("Результат найден в мапе")
-		return res, nil
+		return &res, nil
 	}
 
-	return models.Item{}, repositories.ErrNotFound
+	return nil, repositories.ErrNotFound
 }
 
 func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {

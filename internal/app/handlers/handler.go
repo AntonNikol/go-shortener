@@ -55,18 +55,20 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 		UserID:  userID,
 	}
 
-	item, err = h.repository.AddItem(c.Request().Context(), item)
+	result, err := h.repository.AddItem(c.Request().Context(), item)
+	log.Printf("получен ответ %+v, %v", result, err)
+
 	if err != nil && !errors.Is(err, repositories.ErrAlreadyExists) {
 		// а вот пятисотки логгировать как раз надо
 		log.Printf("unable to add item %v in repo: %v", item, err)
-		return c.String(http.StatusInternalServerError, h.baseURL+"/"+item.ID)
+		return c.String(http.StatusInternalServerError, h.baseURL+"/"+result.ID)
 	}
 	if errors.Is(err, repositories.ErrAlreadyExists) {
 		// нам незачем логгировать ошибки 4хх - иначе тогда любой клиент сможет хранилку логов задудосить
-		return c.String(http.StatusConflict, h.baseURL+"/"+item.ID)
+		return c.String(http.StatusConflict, h.baseURL+"/"+result.ID)
 	}
 
-	return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
+	return c.String(http.StatusCreated, h.baseURL+"/"+result.ID)
 }
 
 func (h Handlers) CreateItemJSONHandler(c echo.Context) error {
@@ -82,12 +84,12 @@ func (h Handlers) CreateItemJSONHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "JSON parsing error")
 	}
 	item.UserID = userID
-	item, err = h.repository.AddItem(c.Request().Context(), item)
+	result, err := h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
 		if errors.Is(err, repositories.ErrAlreadyExists) {
 			return c.JSON(http.StatusConflict, struct {
 				Result string `json:"result"`
-			}{Result: h.baseURL + "/" + item.ID})
+			}{Result: h.baseURL + "/" + result.ID})
 		}
 		log.Printf("CreateItemJSON err: %v", err)
 		return c.String(http.StatusInternalServerError, IntServErr)
@@ -95,7 +97,7 @@ func (h Handlers) CreateItemJSONHandler(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, struct {
 		Result string `json:"result"`
-	}{Result: h.baseURL + "/" + item.ID})
+	}{Result: h.baseURL + "/" + result.ID})
 }
 
 func (h Handlers) GetItemHandler(c echo.Context) error {

@@ -23,25 +23,25 @@ func (r *Repository) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
+func (r *Repository) AddItem(ctx context.Context, item models.Item) (*models.Item, error) {
 	// добавляем в мапу items
 	id, _ := generator.GenerateRandomID(3)
 	item.ID = id
 	r.items[item.ID] = item
 	log.Printf("inmemory AddItem добавляем item в память %v", item)
-	return item, nil
+	return &item, nil
 }
 
-func (r *Repository) GetItemByID(ctx context.Context, id string) (models.Item, error) {
+func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	log.Println("GetItemById memory")
 
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
 		log.Printf("Результат найден в мапе")
-		return res, nil
+		return &res, nil
 	}
 
-	return models.Item{}, repositories.ErrNotFound
+	return nil, repositories.ErrNotFound
 }
 
 func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {

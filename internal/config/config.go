@@ -26,7 +26,7 @@ import (
 
 // запуск автотестов докер
 // docker compose -f docker-compose.yml down --remove-orphans -t 3 --volumes
-// docker compose -f docker-compose.yml --profile shortener up --remove-orphans --force-recreate -d --build
+// docker compose -f docker-compose.yml --profile shortener up --remove-orphans --force-recreate -d --build	shortener-10
 
 type Config struct {
 	BaseURL         string

@@ -22,7 +22,7 @@ type Postgres struct {
 	DB *sql.DB
 }
 
-func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, error) {
+func (p Postgres) AddItem(ctx context.Context, item models.Item) (*models.Item, error) {
 
 	var id string
 	err := p.DB.QueryRowContext(ctx, "INSERT INTO short_links (full_url, user_id) values ($1, $2) "+
@@ -35,17 +35,19 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, e
 		log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
 		item, err = p.GetItemByFullURL(ctx, item.FullURL)
 		if err != nil {
-			return models.Item{}, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
+			return nil, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
 		}
 
-		return item, repositories.ErrAlreadyExists
+		return &item, repositories.ErrAlreadyExists
 	}
 
 	log.Printf("postgres AddItem успешно id: %s", id)
 
 	item.ID = id
 	item.ShortURL = item.ShortURL + id
-	return item, nil
+
+	fmt.Printf("возвращаемый item в методе createItem %+v", item)
+	return &item, nil
 }
 
 func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.Item, error) {
@@ -63,7 +65,7 @@ func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.
 	return i, nil
 }
 
-func (p Postgres) GetItemByID(ctx context.Context, id string) (models.Item, error) {
+func (p Postgres) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
 		"SELECT id,full_url FROM short_links where id=$1", id)
 
@@ -73,12 +75,12 @@ func (p Postgres) GetItemByID(ctx context.Context, id string) (models.Item, erro
 	if err != nil {
 		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 
-		return models.Item{}, repositories.ErrNotFound
+		return nil, repositories.ErrNotFound
 	}
 
 	log.Printf("postgres GetItemByID Scan успех: %v", i)
 
-	return i, nil
+	return &i, nil
 }
 
 func (p Postgres) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
@@ -123,8 +125,6 @@ func New(ctx context.Context, DSN string) (*Postgres, error) {
 	db, err := sql.Open("postgres",
 		DSN)
 	if err != nil {
-		//fmt.Errorf("unable to connect db :%v", err)
-		//panic(err)
 		return nil, err
 	}
 
