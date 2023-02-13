@@ -29,8 +29,7 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, e
 		"  RETURNING id ",
 		item.FullURL, item.UserID).Scan(&id)
 
-	if err != nil && !strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-
+	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 		//Получаем запись по full_url
 		log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
 		item, err = p.GetItemByFullURL(ctx, item.FullURL)

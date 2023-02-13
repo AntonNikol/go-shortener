@@ -10,7 +10,7 @@ import (
 // Пример запуска сервера для работы с памятью
 // go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008
 // Пример запуска сервера для работы с файлом
-// go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt
+// go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -f=items_test.txt -d
 // Пример запуска сервера для работы с БД
 // go run cmd/shortener/main.go -a=localhost:8008 -b=http://localhost:8008 -d="postgres://postgres:postgres@localhost:54322/postgres?sslmode=disable"
 
