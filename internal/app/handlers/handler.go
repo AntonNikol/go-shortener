@@ -3,38 +3,34 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
-	"github.com/AntonNikol/go-shortener/internal/app/repositories/postgres"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
-	dbDSN      string
 }
 
 const (
-	userIDLength = 16
-	IntServErr   = "Internal Server Error"
+	IntServErr = "Internal Server Error"
 )
 
-func New(baseURL string, repository repositories.Repository, dbDSN string) *Handlers {
+func New(baseURL string, repository repositories.Repository) *Handlers {
 	return &Handlers{
 		baseURL:    baseURL,
 		repository: repository,
-		dbDSN:      dbDSN,
 	}
 }
 
-func (h Handlers) CreateItem(c echo.Context) error {
+func (h Handlers) CreateItemHandler(c echo.Context) error {
+
+	log.Printf("CreateItemHandler 1")
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
@@ -49,21 +45,9 @@ func (h Handlers) CreateItem(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid url")
 	}
 
-	////Если в куках передан UserID берем его - иначе генерируем новый
-	//userID, err := getUserIDFromCookies(c)
-	//if err != nil {
-	//	userID, err = generator.GenerateRandomID(userIDLength)
-	//	if err != nil {
-	//		log.Printf("ошибка генерации UserID %v", err)
-	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-	//	}
-	//	// Устанавливаем куки в заголовки
-	//	setUserIDInCookies(c, userID)
-	//}
-
+	log.Printf("CreateItemHandle2")
 	user, err := c.Cookie("user_id")
 	if err != nil {
-		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 	userID := user.Value
@@ -75,8 +59,8 @@ func (h Handlers) CreateItem(c echo.Context) error {
 
 	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
-		if errors.Is(err, postgres.ErrUniqueViolation) {
-			log.Printf("ErrUniqueViolation, item %v", item)
+		if errors.Is(err, repositories.ErrAlreadyExists) {
+			log.Printf("ErrAlreadyExists, item %v", item)
 			return c.String(http.StatusConflict, h.baseURL+"/"+item.ID)
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -84,20 +68,7 @@ func (h Handlers) CreateItem(c echo.Context) error {
 	return c.String(http.StatusCreated, h.baseURL+"/"+item.ID)
 }
 
-func (h Handlers) CreateItemJSON(c echo.Context) error {
-
-	//Если в куках передан UserID берем его - иначе генерируем новый
-	//userID, err := getUserIDFromCookies(c)
-	//if err != nil {
-	//	userID, err = generator.GenerateRandomID(userIDLength)
-	//	if err != nil {
-	//		log.Printf("ошибка генерации UserID %v", err)
-	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-	//	}
-	//	// Устанавливаем куки в заголовки
-	//	setUserIDInCookies(c, userID)
-	//}
-
+func (h Handlers) CreateItemJSONHandler(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
 		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
@@ -105,7 +76,7 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	}
 	userID := user.Value
 
-	item := models.Item{}
+	var item models.Item
 	if err := c.Bind(&item); err != nil {
 		log.Printf("handler CreateItemJSON json parsing error %v", err)
 		return echo.NewHTTPError(http.StatusBadRequest, "JSON parsing error")
@@ -113,8 +84,8 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	item.UserID = userID
 	item, err = h.repository.AddItem(c.Request().Context(), item)
 	if err != nil {
-		if errors.Is(err, postgres.ErrUniqueViolation) {
-			log.Printf("ErrUniqueViolation, item %v", item)
+		if errors.Is(err, repositories.ErrAlreadyExists) {
+			log.Printf("ErrAlreadyExists, item %v", item)
 			return c.JSON(http.StatusConflict, struct {
 				Result string `json:"result"`
 			}{Result: h.baseURL + "/" + item.ID})
@@ -128,11 +99,15 @@ func (h Handlers) CreateItemJSON(c echo.Context) error {
 	}{Result: h.baseURL + "/" + item.ID})
 }
 
-func (h Handlers) GetItem(c echo.Context) error {
+func (h Handlers) GetItemHandler(c echo.Context) error {
 	id := c.Param("id")
 
 	item, err := h.repository.GetItemByID(c.Request().Context(), id)
-	if err != nil {
+	if err != nil && !errors.Is(err, repositories.ErrNotFound) {
+		log.Printf("unable to get item %v from repo: %v", id, err)
+		return echo.NewHTTPError(http.StatusInternalServerError, h.baseURL+"/"+id)
+	}
+	if errors.Is(err, repositories.ErrNotFound) {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
 
@@ -140,16 +115,9 @@ func (h Handlers) GetItem(c echo.Context) error {
 	return c.String(http.StatusTemporaryRedirect, "")
 }
 
-func (h Handlers) GetItemsByUserID(c echo.Context) error {
-	//// Если по юзеру ничего не найдено возвращаем 204
-	//userID, err := getUserIDFromCookies(c)
-	//if err != nil {
-	//	return c.String(http.StatusNoContent, "")
-	//}
-
+func (h Handlers) GetItemsByUserIDHandler(c echo.Context) error {
 	user, err := c.Cookie("user_id")
 	if err != nil {
-		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 	userID := user.Value
@@ -172,27 +140,7 @@ func (h Handlers) GetItemsByUserID(c echo.Context) error {
 	return c.JSON(http.StatusOK, result)
 }
 
-// Получение UserID из cookie
-func getUserIDFromCookies(c echo.Context) (string, error) {
-	cookie, err := c.Cookie("user_id")
-	if err != nil {
-		return "", err
-	}
-	fmt.Println(cookie.Name)
-	fmt.Println(cookie.Value)
-	return cookie.Value, nil
-}
-
-func setUserIDInCookies(c echo.Context, userID string) {
-	// Устанавливаем куки в заголовки
-	cookie := new(http.Cookie)
-	cookie.Name = "user_id"
-	cookie.Value = userID
-	cookie.Expires = time.Now().Add(24 * time.Hour)
-	c.SetCookie(cookie)
-}
-
-func (h Handlers) DBPing(c echo.Context) error {
+func (h Handlers) DBPingHandler(c echo.Context) error {
 	err := h.repository.Ping(c.Request().Context())
 	if err != nil {
 		log.Println("err ping")
@@ -202,7 +150,7 @@ func (h Handlers) DBPing(c echo.Context) error {
 	return c.String(http.StatusOK, "")
 }
 
-func (h Handlers) CreateItemsList(c echo.Context) error {
+func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
@@ -216,24 +164,11 @@ func (h Handlers) CreateItemsList(c echo.Context) error {
 	err = json.Unmarshal(body, &itemsRequest)
 	if err != nil {
 		log.Printf("Ошибка парсинга json %v", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
+		return echo.NewHTTPError(http.StatusBadRequest, IntServErr)
 	}
-
-	////Если в куках передан UserID берем его - иначе генерируем новый
-	//userID, err := getUserIDFromCookies(c)
-	//if err != nil {
-	//	userID, err = generator.GenerateRandomID(userIDLength)
-	//	if err != nil {
-	//		log.Printf("ошибка генерации UserID %v", err)
-	//		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-	//	}
-	//	// Устанавливаем куки в заголовки
-	//	setUserIDInCookies(c, userID)
-	//}
 
 	user, err := c.Cookie("user_id")
 	if err != nil {
-		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
 		return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
 	}
 	userID := user.Value

@@ -9,7 +9,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgerrcode"
 	_ "github.com/jackc/pgx/v5"
 	_ "github.com/lib/pq"
 	"log"
@@ -17,8 +16,6 @@ import (
 )
 
 var err error
-
-var ErrUniqueViolation = errors.New(pgerrcode.UniqueViolation)
 
 type Postgres struct {
 	DB *sql.DB
@@ -43,7 +40,7 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, e
 				return models.Item{}, repositories.ErrNotFound
 			}
 
-			return item, ErrUniqueViolation
+			return item, repositories.ErrAlreadyExists
 		}
 		return models.Item{}, err
 	}
@@ -129,6 +126,7 @@ func New(ctx context.Context, DSN string) *Postgres {
 	db, err := sql.Open("postgres",
 		DSN)
 	if err != nil {
+		//fmt.Errorf("unable to connect db :%v", err)
 		panic(err)
 	}
 
@@ -168,7 +166,6 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 	defer tx.Rollback()
 
 	// шаг 2 — готовим инструкцию
-	//TODO: user_id проверять на null
 	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url,user_id) VALUES($1, $2) RETURNING id")
 	if err != nil {
 		return nil, err
@@ -178,7 +175,7 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 
 	var id string
 	for k, v := range items {
-		// шаг 3 — указываем, что каждое видео будет добавлено в транзакцию
+		// шаг 3 — указываем, что каждый item будет добавлен в транзакцию
 		err := stmt.QueryRowContext(ctx, v.FullURL, v.UserID).Scan(&id)
 		if err != nil {
 			return nil, err

@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), "")
+var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
 
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
@@ -66,7 +66,7 @@ func Test_createItem(t *testing.T) {
 			c.Request().AddCookie(cookie)
 
 			// Проверки
-			if assert.NoError(t, h.CreateItem(c)) {
+			if assert.NoError(t, h.CreateItemHandler(c)) {
 				require.Equal(t, tt.want.statusCode, rec.Code)
 				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
@@ -130,7 +130,7 @@ func Test_createItemJSON(t *testing.T) {
 			c.Request().AddCookie(cookie)
 
 			// Проверки
-			if assert.NoError(t, h.CreateItemJSON(c)) {
+			if assert.NoError(t, h.CreateItemJSONHandler(c)) {
 				require.Equal(t, tt.want.statusCode, rec.Code)
 				require.Equal(t, tt.want.contentType, rec.Header().Get("Content-type"))
 
@@ -191,7 +191,7 @@ func Test_getItem(t *testing.T) {
 		},
 	}
 
-	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), "")
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -207,7 +207,7 @@ func Test_getItem(t *testing.T) {
 			cookie.Value, _ = generator.GenerateRandomID(16)
 			c.Request().AddCookie(cookie)
 
-			h.CreateItem(c)
+			h.CreateItemHandler(c)
 			responseBody := rec.Body.String()
 
 			// Получаем id из ссылки
@@ -224,7 +224,7 @@ func Test_getItem(t *testing.T) {
 			c.SetParamValues(id)
 
 			// Assertions
-			if assert.NoError(t, h.GetItem(c)) {
+			if assert.NoError(t, h.GetItemHandler(c)) {
 				assert.Equal(t, tt.want.statusCode, rec.Code)
 
 				// Если проверяем только то, что при осутствующем id хендлер вернет 404, то завершаем тест

@@ -17,8 +17,7 @@ import (
 
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
 
-	h := handlers.New(cfg.BaseURL, repo, cfg.DBDSN)
-	log.Printf("server.go мидлвары")
+	h := handlers.New(cfg.BaseURL, repo)
 
 	// Routes
 	e := echo.New()
@@ -38,14 +37,13 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 			return !strings.Contains(c.Request().Header.Get("Content-Encoding"), "gzip")
 		},
 	}))
-	log.Printf("server.go роуты")
 
-	e.POST("/", h.CreateItem)
-	e.POST("api/shorten", h.CreateItemJSON)
-	e.POST("api/shorten/batch", h.CreateItemsList)
-	e.GET("/:id", h.GetItem)
-	e.GET("/api/user/urls", h.GetItemsByUserID)
-	e.GET("/ping", h.DBPing)
+	e.POST("/", h.CreateItemHandler)
+	e.POST("api/shorten", h.CreateItemJSONHandler)
+	e.POST("api/shorten/batch", h.CreateItemsListHandler)
+	e.GET("/:id", h.GetItemHandler)
+	e.GET("/api/user/urls", h.GetItemsByUserIDHandler)
+	e.GET("/ping", h.DBPingHandler)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 

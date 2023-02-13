@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"fmt"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"github.com/labstack/echo/v4"
 	"log"
@@ -15,12 +16,14 @@ func CookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if err != nil || cookie.Value == "" {
 			log.Printf("userCookieMiddleware чтение куки, ошибка %v", err)
 			log.Printf("userCookieMiddleware куки пустые. пишем новые")
-			userID, _ := generator.GenerateRandomID(16)
-			//if err != nil {
-			//	log.Printf("userCookieMiddleware generateUserID ошибка %v", err)
-			//	return err
-			//}
-			// Устанавливаем куки в заголовки
+			userID, err := generator.GenerateRandomID(16)
+
+			fmt.Printf("middleware GenerateRandomID")
+			if err != nil {
+				log.Printf("userCookieMiddleware generateUserID ошибка %v", err)
+				return err
+			}
+			// Устанавливаем куки в заголовки ответа
 			cookie := new(http.Cookie)
 			cookie.Name = "user_id"
 			cookie.Value = userID
@@ -31,14 +34,8 @@ func CookieMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 			//Установить куки в заголовки запроса
 			c.Request().AddCookie(cookie)
 		}
+		log.Println("userCookieMiddleware конец мидлвара")
 
-		//log.Println("userCookieMiddleware конец мидлвара")
 		return next(c)
 	}
 }
-
-//user, err := c.Cookie("user_id")
-//if err != nil {
-//log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-//return echo.NewHTTPError(http.StatusInternalServerError, IntServErr)
-//}
