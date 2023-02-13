@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/golang-migrate/migrate/v4"
@@ -34,7 +35,7 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (models.Item, e
 		log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
 		item, err = p.GetItemByFullURL(ctx, item.FullURL)
 		if err != nil {
-			return models.Item{}, repositories.ErrNotFound
+			return models.Item{}, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
 		}
 
 		return item, repositories.ErrAlreadyExists

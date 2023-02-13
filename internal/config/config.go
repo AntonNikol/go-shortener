@@ -25,6 +25,7 @@ import (
 // shortenertest -test.v -test.run=^TestIteration8/TestGzipCompress/shorten$ -binary-path=cmd/shortener/shortener
 
 // запуск автотестов докер
+// docker compose -f docker-compose.yml down --remove-orphans -t 3 --volumes
 // docker compose -f docker-compose.yml --profile shortener up --remove-orphans --force-recreate -d --build
 
 type Config struct {

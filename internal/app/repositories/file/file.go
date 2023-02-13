@@ -101,7 +101,42 @@ func (r *Repository) AddItem(ctx context.Context, item models.Item) (models.Item
 }
 
 func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.Item) (map[string]models.Item, error) {
-	return items, nil
+
+	writer := bufio.NewWriter(r.file)
+
+	newItems := map[string]models.Item{}
+	// добавляем в мапу items
+
+	for k, i := range items {
+		id, _ := generator.GenerateRandomID(3)
+		newItem := models.Item{
+			ID:      id,
+			FullURL: i.FullURL,
+		}
+		newItems[k] = newItem
+		log.Printf("file AddItemsList добавляем item в новую мапу newItem %v", newItem)
+		r.items[id] = newItem
+
+		data, err := json.Marshal(newItem)
+		if err != nil {
+			return nil, fmt.Errorf("unable serialise item %w", err)
+		}
+
+		_, err = writer.Write(data)
+		if err != nil {
+			return nil, fmt.Errorf("unable to write file: %w", err)
+		}
+
+		// добавляем перенос строки
+		_, err = writer.Write([]byte("\n"))
+		if err != nil {
+			return nil, fmt.Errorf("unable to write file: %w", err)
+		}
+
+		writer.Flush()
+	}
+	// добавляем newItems в items
+	return newItems, nil
 }
 
 func (r *Repository) GetItemByID(ctx context.Context, id string) (models.Item, error) {
