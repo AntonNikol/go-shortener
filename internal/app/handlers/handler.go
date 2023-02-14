@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/pkg/ctxdata"
 	"github.com/labstack/echo/v4"
 	"io"
 	"log"
@@ -29,6 +30,11 @@ func New(baseURL string, repository repositories.Repository) *Handlers {
 }
 
 func (h Handlers) CreateItemHandler(c echo.Context) error {
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
+	}
+
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, IntServErr)
@@ -42,14 +48,6 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusBadRequest, "Invalid url")
 	}
-
-	log.Printf("CreateItemHandle2")
-	user, err := c.Cookie("user_id")
-	if err != nil {
-		return c.String(http.StatusInternalServerError, IntServErr)
-	}
-	userID := user.Value
-
 	item := models.Item{
 		FullURL: string(body),
 		UserID:  userID,
@@ -72,12 +70,10 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 }
 
 func (h Handlers) CreateItemJSONHandler(c echo.Context) error {
-	user, err := c.Cookie("user_id")
-	if err != nil {
-		log.Printf("CreateItemJSON не удалось прочитать куки %v", err)
-		return c.String(http.StatusInternalServerError, IntServErr)
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
 	}
-	userID := user.Value
 
 	var item models.Item
 	if err := c.Bind(&item); err != nil {
@@ -117,11 +113,10 @@ func (h Handlers) GetItemHandler(c echo.Context) error {
 }
 
 func (h Handlers) GetItemsByUserIDHandler(c echo.Context) error {
-	user, err := c.Cookie("user_id")
-	if err != nil {
-		return c.String(http.StatusInternalServerError, IntServErr)
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
 	}
-	userID := user.Value
 
 	items, err := h.repository.GetItemsByUserID(c.Request().Context(), userID)
 	if err != nil {
@@ -152,6 +147,11 @@ func (h Handlers) DBPingHandler(c echo.Context) error {
 }
 
 func (h Handlers) CreateItemsListHandler(c echo.Context) error {
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
+	}
+	
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, IntServErr)
@@ -167,11 +167,6 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
-	user, err := c.Cookie("user_id")
-	if err != nil {
-		return c.String(http.StatusInternalServerError, IntServErr)
-	}
-	userID := user.Value
 	// Собираем мапу айтемсов
 	items := make(map[string]models.Item)
 	for _, v := range itemsRequest {

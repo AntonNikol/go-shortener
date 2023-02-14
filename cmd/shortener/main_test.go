@@ -6,6 +6,7 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
+	"github.com/AntonNikol/go-shortener/pkg/ctxdata"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"net/http"
 	"net/http/httptest"
@@ -60,10 +61,9 @@ func Test_createItem(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			cookie := new(http.Cookie)
-			cookie.Name = "user_id"
-			cookie.Value, _ = generator.GenerateRandomID(16)
-			c.Request().AddCookie(cookie)
+			userID, _ := generator.GenerateRandomID(16)
+			ctx := ctxdata.SetUserID(c.Request().Context(), userID)
+			c.SetRequest(c.Request().WithContext(ctx))
 
 			// Проверки
 			if assert.NoError(t, h.CreateItemHandler(c)) {
@@ -124,10 +124,9 @@ func Test_createItemJSON(t *testing.T) {
 			c := e.NewContext(req, rec)
 			c.Request().Header.Set("Content-Type", "application/json")
 
-			cookie := new(http.Cookie)
-			cookie.Name = "user_id"
-			cookie.Value, _ = generator.GenerateRandomID(16)
-			c.Request().AddCookie(cookie)
+			userID, _ := generator.GenerateRandomID(16)
+			ctx := ctxdata.SetUserID(c.Request().Context(), userID)
+			c.SetRequest(c.Request().WithContext(ctx))
 
 			// Проверки
 			if assert.NoError(t, h.CreateItemJSONHandler(c)) {
@@ -202,10 +201,9 @@ func Test_getItem(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			cookie := new(http.Cookie)
-			cookie.Name = "user_id"
-			cookie.Value, _ = generator.GenerateRandomID(16)
-			c.Request().AddCookie(cookie)
+			userID, _ := generator.GenerateRandomID(16)
+			ctx := ctxdata.SetUserID(c.Request().Context(), userID)
+			c.SetRequest(c.Request().WithContext(ctx))
 
 			h.CreateItemHandler(c)
 			responseBody := rec.Body.String()
@@ -236,12 +234,3 @@ func Test_getItem(t *testing.T) {
 		})
 	}
 }
-
-//
-//func setCookie(e *echo.Echo, req *http.Request, rec *httptest.ResponseRecorder) {
-//	c := e.NewContext(req, rec)
-//	cookie := new(http.Cookie)
-//	cookie.Name = "user_id"
-//	cookie.Value, _ = generator.GenerateRandomID(16)
-//	c.SetCookie(cookie)
-//}
