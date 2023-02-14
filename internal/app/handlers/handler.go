@@ -59,7 +59,7 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 	if err != nil && !errors.Is(err, repositories.ErrAlreadyExists) {
 		// а вот пятисотки логгировать как раз надо
 		log.Printf("unable to add item %v in repo: %v", item, err)
-		return c.String(http.StatusInternalServerError, h.baseURL+"/"+result.ID)
+		return c.String(http.StatusInternalServerError, IntServErr)
 	}
 	if errors.Is(err, repositories.ErrAlreadyExists) {
 		// нам незачем логгировать ошибки 4хх - иначе тогда любой клиент сможет хранилку логов задудосить
@@ -151,7 +151,7 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 	if !ok {
 		return c.String(http.StatusBadRequest, "Cookie read err")
 	}
-	
+
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, IntServErr)

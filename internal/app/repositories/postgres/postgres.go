@@ -7,13 +7,14 @@ import (
 	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/jackc/pgx/v5"
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
-	"strings"
 )
 
 var err error
@@ -22,37 +23,67 @@ type Postgres struct {
 	DB *sql.DB
 }
 
-func (p Postgres) AddItem(ctx context.Context, item models.Item) (*models.Item, error) {
+func New(ctx context.Context, DSN string) (*Postgres, error) {
+	db, err := sql.Open("pgx",
+		DSN)
+	if err != nil {
+		return nil, err
+	}
 
+	// накатка миграций
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://./internal/migrations",
+		"postgres", driver)
+	if err != nil {
+		return nil, err
+	}
+	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return nil, err
+	}
+
+	return &Postgres{DB: db}, nil
+}
+
+func (p Postgres) AddItem(ctx context.Context, item models.Item) (*models.Item, error) {
 	var id string
-	err := p.DB.QueryRowContext(ctx, "INSERT INTO short_links (full_url, user_id) values ($1, $2) "+
+	shortURL, _ := generator.GenerateRandomID(3)
+
+	err := p.DB.QueryRowContext(ctx, "INSERT INTO short_links (full_url, user_id, short_url) values ($1, $2, $3) "+
 		//"ON CONFLICT (full_url) DO NOTHING"+
 		"  RETURNING id ",
-		item.FullURL, item.UserID).Scan(&id)
+		item.FullURL, item.UserID, shortURL).Scan(&id)
 
-	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-		//Получаем запись по full_url
-		log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
-		item, err = p.GetItemByFullURL(ctx, item.FullURL)
-		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			log.Printf("да это ошибка pgerr")
+			//Получаем запись по full_url
+			log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
+			item, err = p.GetItemByFullURL(ctx, item.FullURL)
+			if err != nil {
+				return &item, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
+			}
+
+			return &item, repositories.ErrAlreadyExists
 		}
-
-		return &item, repositories.ErrAlreadyExists
+		return nil, fmt.Errorf("unable insert into table %w", err)
 	}
 
 	log.Printf("postgres AddItem успешно id: %s", id)
 
-	item.ID = id
-	item.ShortURL = item.ShortURL + id
-
+	item.ID = shortURL
 	fmt.Printf("возвращаемый item в методе createItem %+v", item)
 	return &item, nil
 }
 
 func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
-		"SELECT id,full_url FROM short_links where full_url=$1", fullURL)
+		"SELECT short_url,full_url FROM short_links where full_url=$1", fullURL)
 
 	var i models.Item
 
@@ -67,7 +98,7 @@ func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.
 
 func (p Postgres) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
-		"SELECT id,full_url FROM short_links where id=$1", id)
+		"SELECT short_url,full_url FROM short_links where short_url=$1", id)
 
 	var i models.Item
 
@@ -121,32 +152,6 @@ func (p Postgres) GetItemsByUserID(ctx context.Context, userID string) ([]models
 
 }
 
-func New(ctx context.Context, DSN string) (*Postgres, error) {
-	db, err := sql.Open("postgres",
-		DSN)
-	if err != nil {
-		return nil, err
-	}
-
-	// накатка миграций
-	driver, err := postgres.WithInstance(db, &postgres.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://./internal/migrations",
-		"postgres", driver)
-	if err != nil {
-		return nil, err
-	}
-	if err = m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return nil, err
-	}
-
-	return &Postgres{DB: db}, nil
-}
-
 func (p Postgres) Ping(ctx context.Context) error {
 	return p.DB.Ping()
 }
@@ -164,7 +169,7 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 	defer tx.Rollback()
 
 	// шаг 2 — готовим инструкцию
-	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url,user_id) VALUES($1, $2) RETURNING id")
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO short_links(full_url,short_url,user_id) VALUES($1, $2, $3) RETURNING id")
 	if err != nil {
 		return nil, err
 	}
@@ -173,12 +178,13 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 
 	var id string
 	for k, v := range items {
+		shortURL, _ := generator.GenerateRandomID(3)
 		// шаг 3 — указываем, что каждый item будет добавлен в транзакцию
-		err := stmt.QueryRowContext(ctx, v.FullURL, v.UserID).Scan(&id)
+		err := stmt.QueryRowContext(ctx, v.FullURL, shortURL, v.UserID).Scan(&id)
 		if err != nil {
 			return nil, err
 		}
-		result[k] = models.Item{ID: id}
+		result[k] = models.Item{ID: shortURL}
 	}
 	// шаг 4 — сохраняем изменения
 	err = tx.Commit()
