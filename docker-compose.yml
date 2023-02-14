@@ -7,7 +7,6 @@
 # Profile 'shortener' will run autotests for shortener track.
 # 2. Global services - services which are used in both tracks
 
-
 # Docker compose compat: https://docs.docker.com/compose/compose-file/compose-versioning/#compatibility-matrix
 version: "Compose specification"
 # -----------------------------------------------------------------------------
@@ -21,6 +20,9 @@ x-devops-default-conf: &devops-default-conf
   stop_grace_period: 10s
   profiles:
     - devops
+  depends_on:
+    postgres:
+      condition: service_healthy
 ## used in build section
 x-devops-build-conf: &devops-build-conf
   context: .
@@ -39,6 +41,9 @@ x-shortener-default-conf: &shortener-default-conf
   stop_grace_period: 10s
   profiles:
     - shortener
+  depends_on:
+    postgres:
+      condition: service_healthy
 ## used in build section
 x-shortener-build-conf: &shortener-build-conf
   context: .
@@ -200,8 +205,6 @@ services:
       -server-port=$$(random unused-port) \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
       -key=$$(random tempfile)"
-    depends_on:
-      - postgres
     build:
       <<: *devops-build-conf
   # INCREMENT 11
@@ -215,8 +218,6 @@ services:
       -server-port=$$(random unused-port) \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
       -key=$$(random tempfile)"
-    depends_on:
-      - postgres
     build:
       <<: *devops-build-conf
   # INCREMENT 12
@@ -230,8 +231,6 @@ services:
       -server-port=$$(random unused-port) \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
       -key=$$(random tempfile)"
-    depends_on:
-      - postgres
     build:
       <<: *devops-build-conf
   # INCREMENT 13
@@ -254,8 +253,6 @@ services:
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable' \
       -file-storage-path=$$(random tempfile) \
       -key=$$(random tempfile)"
-    depends_on:
-      - postgres
     build:
       <<: *devops-build-conf
   # INCREMENT 14-race
@@ -373,8 +370,6 @@ services:
       -source-path='${YA_SOURCE_PATH:-.}' \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 11
@@ -384,8 +379,6 @@ services:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration11$ \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 12
@@ -395,8 +388,6 @@ services:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration12$ \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 13
@@ -406,8 +397,6 @@ services:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration13$ \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 14
@@ -417,8 +406,6 @@ services:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration14$ \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}' \
       -database-dsn='postgres://postgres:postgres@postgres:5432/praktikum?sslmode=disable'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 14-degradation
@@ -427,8 +414,6 @@ services:
     entrypoint:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration14$ \
       -binary-path='${YA_BINARY_PATH:-cmd/shortener/shortener}'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 14-race
@@ -436,8 +421,6 @@ services:
     <<: *shortener-default-conf
     entrypoint:
       /bin/bash -c "go test -v -race ./..."
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 15
@@ -446,8 +429,6 @@ services:
     entrypoint:
       /bin/bash -c "shortenertest -test.v -test.run=^TestIteration15$ \
       -source-path='${YA_SOURCE_PATH:-.}'"
-    depends_on:
-      - postgres
     build:
       <<: *shortener-build-conf
   # INCREMENT 16
