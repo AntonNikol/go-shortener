@@ -7,6 +7,7 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"log"
+	"sync"
 )
 
 type Repository struct {
@@ -77,4 +78,23 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 	}
 	// добавляем newItems в items
 	return newItems, nil
+}
+
+func (r *Repository) Delete(ctx context.Context, list []string, userID string) (*int, error) {
+	// список id может быть большим, id могут дублироваться.
+	var wg sync.WaitGroup
+
+	for _, v := range list {
+		wg.Add(1)
+
+		go func(key string) {
+			delete(r.items, key)
+			wg.Done()
+		}(v)
+	}
+
+	wg.Wait()
+
+	res := 1
+	return &res, nil
 }

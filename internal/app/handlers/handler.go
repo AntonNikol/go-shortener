@@ -107,6 +107,9 @@ func (h Handlers) GetItemHandler(c echo.Context) error {
 	if errors.Is(err, repositories.ErrNotFound) {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
+	if item.DeletedAt != "" {
+		return c.String(http.StatusGone, "")
+	}
 
 	c.Response().Header().Set("Location", item.FullURL)
 	return c.String(http.StatusTemporaryRedirect, "")
@@ -190,4 +193,33 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 		response = append(response, r)
 	}
 	return c.JSON(http.StatusCreated, response)
+}
+
+func (h Handlers) DeleteHandler(c echo.Context) error {
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
+	}
+
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, IntServErr)
+	}
+	if len(body) == 0 {
+		return c.String(http.StatusBadRequest, "Request body is required")
+	}
+
+	var listIDS []string
+	err = json.Unmarshal(body, &listIDS)
+	if err != nil {
+		return c.String(http.StatusBadRequest, IntServErr)
+	}
+
+	_, err = h.repository.Delete(c.Request().Context(), listIDS, userID)
+	if err != nil {
+		log.Printf("ошибка при удалении %v", err)
+		return c.String(http.StatusBadRequest, err.Error())
+	}
+
+	return c.String(http.StatusAccepted, userID)
 }

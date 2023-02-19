@@ -44,6 +44,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 	e.GET("/:id", h.GetItemHandler)
 	e.GET("/api/user/urls", h.GetItemsByUserIDHandler)
 	e.GET("/ping", h.DBPingHandler)
+	e.DELETE("/api/user/urls", h.DeleteHandler)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 

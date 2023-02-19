@@ -172,3 +172,8 @@ func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]mod
 func (r *Repository) Ping(ctx context.Context) error {
 	return nil
 }
+
+func (r *Repository) Delete(ctx context.Context, list []string, userID string) (*int, error) {
+	var res int
+	return &res, nil
+}

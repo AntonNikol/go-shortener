@@ -12,9 +12,12 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
+	"sync"
+	"time"
 )
 
 var err error
@@ -98,18 +101,18 @@ func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.
 
 func (p Postgres) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
-		"SELECT short_url,full_url FROM short_links where short_url=$1", id)
+		"SELECT short_url,full_url,deleted_at FROM short_links where short_url=$1", id)
 
 	var i models.Item
 
-	err = row.Scan(&i.ID, &i.FullURL)
+	err = row.Scan(&i.ID, &i.FullURL, &i.DeletedAt)
 	if err != nil {
 		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 
 		return nil, repositories.ErrNotFound
 	}
 
-	log.Printf("postgres GetItemByID Scan успех: %v", i)
+	log.Printf("postgres GetItemByID Scan успех: %+v", i)
 
 	return &i, nil
 }
@@ -193,4 +196,34 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 	}
 
 	return result, nil
+}
+
+func (p Postgres) Delete(ctx context.Context, list []string, userID string) (*int, error) {
+	ids := &pgtype.VarcharArray{}
+	ids.Set(list)
+	log.Printf("ids: %v", ids)
+
+	var wg sync.WaitGroup
+
+	stmt := "UPDATE short_links SET deleted_at =$1 WHERE short_url = any ($2) AND user_id= $3"
+	wg.Add(1)
+
+	go func(ids *pgtype.VarcharArray) {
+		res, err := p.DB.Exec(stmt, time.Now(), ids, userID)
+		if err != nil {
+			log.Printf("unable update rows: %v", err)
+		}
+		count, err := res.RowsAffected()
+		if err != nil {
+			log.Printf("unable check rows affecte: %v", err)
+		}
+		log.Printf("rows updated: %d", count)
+
+		wg.Done()
+	}(ids)
+
+	wg.Wait()
+
+	result := 1
+	return &result, nil
 }
