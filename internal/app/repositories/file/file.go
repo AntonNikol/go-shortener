@@ -47,7 +47,7 @@ func New(filename string) *Repository {
 		//internal.AddItem(context.Background(), item)
 		items[item.ID] = item
 
-		log.Printf("Построчное чтение, item : %s", item)
+		log.Printf("Построчное чтение, item : %v", item)
 	}
 
 	return &Repository{

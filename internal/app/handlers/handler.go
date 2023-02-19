@@ -107,7 +107,7 @@ func (h Handlers) GetItemHandler(c echo.Context) error {
 	if errors.Is(err, repositories.ErrNotFound) {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
-	if item.DeletedAt != "" {
+	if item.IsDeleted {
 		return c.String(http.StatusGone, "")
 	}
 

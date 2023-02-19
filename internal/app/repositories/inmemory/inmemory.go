@@ -81,17 +81,30 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 }
 
 func (r *Repository) Delete(ctx context.Context, list []string, userID string) (*int, error) {
-	// список id может быть большим, id могут дублироваться.
 	var wg sync.WaitGroup
+
+	//ch := make(chan int64)
+	//var resCount int64
 
 	for _, v := range list {
 		wg.Add(1)
 
 		go func(key string) {
-			delete(r.items, key)
+			tmp, ok := r.items[key]
+			if ok {
+				tmp.IsDeleted = true
+				r.items[key] = tmp
+			}
 			wg.Done()
+			//ch <- 1
 		}(v)
 	}
+
+	//for v := range ch {
+	//	resCount += v
+	//}
+	//close(ch)
+	//log.Printf("итого данных обновлено %v", resCount)
 
 	wg.Wait()
 

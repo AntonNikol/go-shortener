@@ -5,7 +5,7 @@ type Item struct {
 	FullURL   string `json:"url"`
 	ShortURL  string `json:"short_url"`
 	UserID    string
-	DeletedAt string
+	IsDeleted bool
 }
 
 type ItemResponse struct {
