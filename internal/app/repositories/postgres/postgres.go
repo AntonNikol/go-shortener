@@ -103,8 +103,12 @@ func (p Postgres) GetItemByID(ctx context.Context, id string) (*models.Item, err
 		"SELECT short_url,full_url,is_deleted FROM short_links where short_url=$1", id)
 
 	var i models.Item
+	var s sql.NullBool
 
-	err = row.Scan(&i.ID, &i.FullURL, &i.IsDeleted)
+	err = row.Scan(&i.ID, &i.FullURL, &s)
+	if s.Valid {
+		i.IsDeleted = s.Bool
+	}
 	if err != nil {
 		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 

@@ -27,6 +27,7 @@ import (
 // запуск автотестов докер
 // docker compose -f docker-compose.yml down --remove-orphans -t 3 --volumes
 // docker compose -f docker-compose.yml --profile shortener up --remove-orphans --force-recreate -d --build
+
 // можно указать необходимые тесты для предыдущей команды shortener-10 shortener-11
 
 type Config struct {

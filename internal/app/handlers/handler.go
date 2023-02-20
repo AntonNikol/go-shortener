@@ -130,8 +130,6 @@ func (h Handlers) GetItemsByUserIDHandler(c echo.Context) error {
 
 	var result []models.ItemResponse
 	for _, v := range items {
-		log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
-
 		v.ShortURL = h.baseURL + "/" + v.ID
 		result = append(result, v)
 	}
