@@ -166,6 +166,7 @@ func (r *Repository) Delete(ctx context.Context, list []string, userID string) e
 		i, ok := r.items[v]
 		if ok && i.UserID == userID && i.IsDeleted != true {
 			i.IsDeleted = true
+			r.items[v] = i
 
 			data, err := json.Marshal(i)
 			if err != nil {
