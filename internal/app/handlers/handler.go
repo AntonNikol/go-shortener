@@ -213,7 +213,7 @@ func (h Handlers) DeleteHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
-	err = h.repository.Delete(c.Request().Context(), listIDS, userID)
+	_, err = h.repository.Delete(c.Request().Context(), listIDS, userID)
 	if err != nil {
 		log.Printf("ошибка при удалении %v", err)
 		return c.String(http.StatusBadRequest, err.Error())

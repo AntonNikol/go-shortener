@@ -14,8 +14,6 @@ type Repository struct {
 	items map[string]models.Item
 }
 
-var mu sync.Mutex
-
 func New() *Repository {
 	return &Repository{
 		items: map[string]models.Item{},
@@ -82,24 +80,34 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 	return newItems, nil
 }
 
-func (r *Repository) Delete(ctx context.Context, list []string, userID string) error {
+func (r *Repository) Delete(ctx context.Context, list []string, userID string) (*int, error) {
 	var wg sync.WaitGroup
+
+	//ch := make(chan int64)
+	//var resCount int64
 
 	for _, v := range list {
 		wg.Add(1)
 
 		go func(key string) {
-			i, ok := r.items[key]
-			if ok && i.UserID == userID {
-				mu.Lock()
-				i.IsDeleted = true
-				mu.Unlock()
+			tmp, ok := r.items[key]
+			if ok {
+				tmp.IsDeleted = true
+				r.items[key] = tmp
 			}
 			wg.Done()
+			//ch <- 1
 		}(v)
 	}
 
+	//for v := range ch {
+	//	resCount += v
+	//}
+	//close(ch)
+	//log.Printf("итого данных обновлено %v", resCount)
+
 	wg.Wait()
 
-	return nil
+	res := 1
+	return &res, nil
 }
