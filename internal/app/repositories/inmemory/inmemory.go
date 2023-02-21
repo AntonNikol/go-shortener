@@ -6,15 +6,12 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
-	"log"
 	"sync"
 )
 
 type Repository struct {
 	items map[string]models.Item
 }
-
-var mu sync.Mutex
 
 func New() *Repository {
 	return &Repository{
@@ -31,16 +28,12 @@ func (r *Repository) AddItem(ctx context.Context, item models.Item) (*models.Ite
 	id, _ := generator.GenerateRandomID(3)
 	item.ID = id
 	r.items[item.ID] = item
-	log.Printf("inmemory AddItem добавляем item в память %v", item)
 	return &item, nil
 }
 
 func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
-	log.Println("GetItemById memory")
-
 	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
-		log.Printf("Результат найден в мапе")
 		return &res, nil
 	}
 
@@ -48,8 +41,6 @@ func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, 
 }
 
 func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
-	log.Println("GetItemsByUserID memory")
-
 	res := make([]models.ItemResponse, 0)
 	// проверяем мапу на наличие там айтема с userID
 	for _, v := range r.items {
@@ -75,7 +66,6 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 			FullURL: i.FullURL,
 		}
 		newItems[k] = newItem
-		log.Printf("inmemory AddItemsList добавляем item в новую мапу newItem %v", newItem)
 		r.items[id] = newItem
 	}
 	// добавляем newItems в items
@@ -89,17 +79,15 @@ func (r *Repository) Delete(ctx context.Context, list []string, userID string) e
 		wg.Add(1)
 
 		go func(key string) {
-			i, ok := r.items[key]
-			if ok && i.UserID == userID {
-				mu.Lock()
-				i.IsDeleted = true
-				mu.Unlock()
+			tmp, ok := r.items[key]
+			if ok && tmp.UserID == userID {
+				tmp.IsDeleted = true
+				r.items[key] = tmp
 			}
 			wg.Done()
 		}(v)
 	}
 
 	wg.Wait()
-
 	return nil
 }

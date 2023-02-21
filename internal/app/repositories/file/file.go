@@ -9,7 +9,6 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
-	"log"
 	"os"
 )
 
@@ -46,8 +45,6 @@ func New(filename string) *Repository {
 		}
 		//internal.AddItem(context.Background(), item)
 		items[item.ID] = item
-
-		log.Printf("Построчное чтение, item : %v", item)
 	}
 
 	return &Repository{
@@ -93,8 +90,6 @@ func (r *Repository) AddItem(ctx context.Context, item models.Item) (*models.Ite
 		return nil, fmt.Errorf("unable to write file: %w", err)
 	}
 
-	log.Printf("Запись в файл произведена")
-
 	// записываем буфер в файл
 	writer.Flush()
 	return &item, nil
@@ -114,7 +109,6 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 			FullURL: i.FullURL,
 		}
 		newItems[k] = newItem
-		log.Printf("file AddItemsList добавляем item в новую мапу newItem %v", newItem)
 		r.items[id] = newItem
 
 		data, err := json.Marshal(newItem)
@@ -140,11 +134,7 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 }
 
 func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
-	log.Println("GetItemById file")
-
-	// проверяем мапу на наличие там айтема по ключу
 	if res, ok := r.items[id]; ok {
-		log.Printf("Результат найден в мапе")
 		return &res, nil
 	}
 
@@ -152,9 +142,6 @@ func (r *Repository) GetItemByID(ctx context.Context, id string) (*models.Item, 
 }
 
 func (r *Repository) GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error) {
-
-	log.Println("GetItemsByUserID file")
-
 	res := make([]models.ItemResponse, 0)
 	// проверяем мапу на наличие там айтема с userID
 	for _, v := range r.items {
@@ -174,5 +161,33 @@ func (r *Repository) Ping(ctx context.Context) error {
 }
 
 func (r *Repository) Delete(ctx context.Context, list []string, userID string) error {
+	// Находим айтем в мапе и устанавливаем признак isDeleted. В файл записываем новый айтем
+	for _, v := range list {
+		i, ok := r.items[v]
+		if ok && i.UserID == userID && i.IsDeleted != true {
+			i.IsDeleted = true
+
+			data, err := json.Marshal(i)
+			if err != nil {
+				return fmt.Errorf("unable serialise item %w", err)
+			}
+
+			// пишем в буфер
+			writer := bufio.NewWriter(r.file)
+			_, err = writer.Write(data)
+			if err != nil {
+				return fmt.Errorf("unable to write file: %w", err)
+			}
+
+			// добавляем перенос строки
+			_, err = writer.Write([]byte("\n"))
+			if err != nil {
+				return fmt.Errorf("unable to write file: %w", err)
+			}
+			// записываем буфер в файл
+			writer.Flush()
+		}
+	}
+
 	return nil
 }
