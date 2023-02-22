@@ -164,7 +164,7 @@ func (r *Repository) Delete(ctx context.Context, list []string, userID string) e
 	// Находим айтем в мапе и устанавливаем признак isDeleted. В файл записываем новый айтем
 	for _, v := range list {
 		i, ok := r.items[v]
-		if ok && i.UserID == userID && i.IsDeleted != true {
+		if ok && i.UserID == userID && !i.IsDeleted {
 			i.IsDeleted = true
 			r.items[v] = i
 
