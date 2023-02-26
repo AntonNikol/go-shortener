@@ -50,8 +50,8 @@ func (j *Job) init(period time.Duration) {
 	}
 }
 
-func (j *Job) Remove(userID string, listID []string) {
-	j.ch <- task{userID: userID, listID: listID}
+func (j *Job) Remove(userID string, listIDS []string) {
+	j.ch <- task{userID: userID, listID: listIDS}
 }
 
 func (j *Job) addToBuffer(t task) {

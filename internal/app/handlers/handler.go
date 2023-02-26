@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/workers"
@@ -18,16 +17,18 @@ import (
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
+	job        *workers.Job
 }
 
 const (
 	IntServErr = "Internal Server Error"
 )
 
-func New(baseURL string, repository repositories.Repository) *Handlers {
+func New(baseURL string, repository repositories.Repository, job *workers.Job) *Handlers {
 	return &Handlers{
 		baseURL:    baseURL,
 		repository: repository,
+		job:        job,
 	}
 }
 
@@ -215,16 +216,7 @@ func (h Handlers) DeleteHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
-	//err = h.repository.Delete(c.Request().Context(), listIDS, userID)
-	//if err != nil {
-	//	log.Printf("ошибка при удалении %v", err)
-	//	return c.String(http.StatusBadRequest, err.Error())
-	//}
-
-	job, ok := c.Request().Context().Value("job").(workers.Job)
-	fmt.Printf("handler job %+v, ok %v", job, ok)
-
-	job.Remove(userID, listIDS)
+	h.job.Remove(userID, listIDS)
 
 	return c.String(http.StatusAccepted, userID)
 }

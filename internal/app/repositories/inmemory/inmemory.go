@@ -6,7 +6,6 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
-	"sync"
 )
 
 type Repository struct {
@@ -73,21 +72,17 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 }
 
 func (r *Repository) Delete(ctx context.Context, list []string, userID string) error {
-	var wg sync.WaitGroup
-
 	for _, v := range list {
-		wg.Add(1)
 
 		go func(key string) {
 			tmp, ok := r.items[key]
 			if ok && tmp.UserID == userID {
+				//if ok {
 				tmp.IsDeleted = true
 				r.items[key] = tmp
 			}
-			wg.Done()
 		}(v)
 	}
 
-	wg.Wait()
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories/inmemory"
+	"github.com/AntonNikol/go-shortener/internal/workers"
 	"github.com/AntonNikol/go-shortener/pkg/ctxdata"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
 	"net/http"
@@ -20,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.Job{})
 
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
@@ -190,7 +191,7 @@ func Test_getItem(t *testing.T) {
 		},
 	}
 
-	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()))
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.Job{})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
