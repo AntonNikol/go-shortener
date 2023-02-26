@@ -6,6 +6,7 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/pkg/generator"
+	"log"
 )
 
 type Repository struct {
@@ -63,6 +64,7 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 		newItem := models.Item{
 			ID:      id,
 			FullURL: i.FullURL,
+			UserID:  i.UserID,
 		}
 		newItems[k] = newItem
 		r.items[id] = newItem
@@ -73,15 +75,17 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 
 func (r *Repository) Delete(ctx context.Context, list []string, userID string) error {
 	for _, v := range list {
+		log.Printf("inmemory Delete id: %s", v)
+		tmp, ok := r.items[v]
+		log.Printf("inmemory Delete tmp:%v, ok %v", v, ok)
+		log.Printf("inmemory Delete tmp:%+v, userID %v", tmp, userID)
 
-		go func(key string) {
-			tmp, ok := r.items[key]
-			if ok && tmp.UserID == userID {
-				//if ok {
-				tmp.IsDeleted = true
-				r.items[key] = tmp
-			}
-		}(v)
+		if ok && tmp.UserID == userID {
+			//if ok {
+			log.Printf("inmemory Delete условие if: %v", v)
+			tmp.IsDeleted = true
+			r.items[v] = tmp
+		}
 	}
 
 	return nil

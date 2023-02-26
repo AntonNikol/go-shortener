@@ -107,6 +107,7 @@ func (r *Repository) AddItemsList(ctx context.Context, items map[string]models.I
 		newItem := models.Item{
 			ID:      id,
 			FullURL: i.FullURL,
+			UserID:  i.UserID,
 		}
 		newItems[k] = newItem
 		r.items[id] = newItem

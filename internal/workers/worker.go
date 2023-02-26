@@ -9,8 +9,8 @@ import (
 )
 
 type task struct {
-	userID string
-	listID []string
+	userID  string
+	listIDS []string
 }
 
 type Job struct {
@@ -51,13 +51,13 @@ func (j *Job) init(period time.Duration) {
 }
 
 func (j *Job) Remove(userID string, listIDS []string) {
-	j.ch <- task{userID: userID, listID: listIDS}
+	j.ch <- task{userID: userID, listIDS: listIDS}
 }
 
 func (j *Job) addToBuffer(t task) {
 	j.mu.Lock()
 
-	for _, v := range t.listID {
+	for _, v := range t.listIDS {
 		log.Printf("addToBuffer: userId %s link id %s", t.userID, v)
 		j.buffer[t.userID] = append(j.buffer[t.userID], v)
 	}
