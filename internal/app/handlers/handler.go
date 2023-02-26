@@ -3,8 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/workers"
 	"github.com/AntonNikol/go-shortener/pkg/ctxdata"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -213,11 +215,16 @@ func (h Handlers) DeleteHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
-	err = h.repository.Delete(c.Request().Context(), listIDS, userID)
-	if err != nil {
-		log.Printf("ошибка при удалении %v", err)
-		return c.String(http.StatusBadRequest, err.Error())
-	}
+	//err = h.repository.Delete(c.Request().Context(), listIDS, userID)
+	//if err != nil {
+	//	log.Printf("ошибка при удалении %v", err)
+	//	return c.String(http.StatusBadRequest, err.Error())
+	//}
+
+	job, ok := c.Request().Context().Value("job").(workers.Job)
+	fmt.Printf("handler job %+v, ok %v", job, ok)
+
+	job.Remove(userID, listIDS)
 
 	return c.String(http.StatusAccepted, userID)
 }

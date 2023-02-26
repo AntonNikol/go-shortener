@@ -2,15 +2,18 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"github.com/AntonNikol/go-shortener/internal/app/handlers"
 	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/config"
+	"github.com/AntonNikol/go-shortener/internal/workers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 //var repo repositories.Repository
@@ -18,6 +21,11 @@ import (
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
 
 	h := handlers.New(cfg.BaseURL, repo)
+
+	job := workers.NewBatchPostponeRemover(ctx, &repo, 1*time.Second, 1)
+	fmt.Printf("server job %+v", job)
+
+	ctx = context.WithValue(ctx, "job", job)
 
 	// Routes
 	e := echo.New()
