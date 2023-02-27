@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.Job{})
+var h = handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.WorkerPool{})
 
 // Тест сокращения ссылки
 func Test_createItem(t *testing.T) {
@@ -191,7 +191,7 @@ func Test_getItem(t *testing.T) {
 		},
 	}
 
-	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.Job{})
+	h := handlers.New("http://localhost:8080", repositories.Repository(inmemory.New()), &workers.WorkerPool{})
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

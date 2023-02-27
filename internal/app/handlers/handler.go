@@ -17,18 +17,18 @@ import (
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
-	job        *workers.Job
+	worker     *workers.WorkerPool
 }
 
 const (
 	IntServErr = "Internal Server Error"
 )
 
-func New(baseURL string, repository repositories.Repository, job *workers.Job) *Handlers {
+func New(baseURL string, repository repositories.Repository, worker *workers.WorkerPool) *Handlers {
 	return &Handlers{
 		baseURL:    baseURL,
 		repository: repository,
-		job:        job,
+		worker:     worker,
 	}
 }
 
@@ -216,7 +216,7 @@ func (h Handlers) DeleteHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, IntServErr)
 	}
 
-	h.job.Remove(userID, listIDS)
+	h.worker.Remove(userID, listIDS)
 
 	return c.String(http.StatusAccepted, userID)
 }

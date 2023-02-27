@@ -16,8 +16,8 @@ import (
 )
 
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
-	job := workers.NewBatchPostponeRemover(ctx, &repo, 1*time.Second, 1)
-	h := handlers.New(cfg.BaseURL, repo, job)
+	worker := workers.NewBatchPostponeRemover(ctx, repo, 10*time.Second, 1000)
+	h := handlers.New(cfg.BaseURL, repo, worker)
 
 	// Routes
 	e := echo.New()
