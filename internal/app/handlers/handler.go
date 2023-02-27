@@ -57,7 +57,7 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 	}
 
 	result, err := h.repository.AddItem(c.Request().Context(), item)
-	log.Printf("получен ответ %+v, %v", result, err)
+	//log.Printf("получен ответ %+v, %v", result, err)
 
 	if err != nil && !errors.Is(err, repositories.ErrAlreadyExists) {
 		// а вот пятисотки логгировать как раз надо

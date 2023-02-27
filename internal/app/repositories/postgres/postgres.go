@@ -75,10 +75,7 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (*models.Item, 
 		return nil, fmt.Errorf("unable insert into table %w", err)
 	}
 
-	//log.Printf("postgres AddItem успешно id: %s", id)
-
 	item.ID = shortURL
-	fmt.Printf("возвращаемый item в методе createItem %+v", item)
 	return &item, nil
 }
 

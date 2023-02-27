@@ -84,14 +84,13 @@ func (w *WorkerPool) removeBatchStorage() {
 	w.mu.Lock()
 	log.Printf("removeBatchStorage, buffer len: %v", len(w.buffer))
 	for _, task := range w.buffer {
-
-		log.Printf("removeBatchStorage, delete task: %v", task)
+		log.Printf("removeBatchStorage, delete task: %+v", task)
 
 		err := w.storage.Delete(w.ctx, task.listIDS, task.userID)
 		if err != nil {
 			log.Printf("unable delete itemsIDS %v", err)
 		}
-		log.Printf("removeBatchStorage: user %s %v", task.listIDS, task.userID)
+		log.Printf("removeBatchStorage: list: %v ,user: %s ", task.listIDS, task.userID)
 	}
 	log.Printf("removeBatchStorage purgeBuffer")
 	w.purgeBuffer()
