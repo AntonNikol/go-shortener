@@ -156,19 +156,12 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Cookie read err")
 	}
 
-	body, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, IntServErr)
-	}
-	if len(body) == 0 {
-		return c.String(http.StatusBadRequest, "Request body is required")
-	}
-
 	var itemsRequest []models.ItemList
-
-	err = json.Unmarshal(body, &itemsRequest)
-	if err != nil {
-		return c.String(http.StatusBadRequest, IntServErr)
+	if err := json.NewDecoder(c.Request().Body).Decode(&itemsRequest); err != nil {
+		return c.String(http.StatusBadRequest, "unable to unmarshal body")
+	}
+	if len(itemsRequest) == 0 {
+		return c.String(http.StatusBadRequest, "zero urls in the passed list")
 	}
 
 	// Собираем мапу айтемсов
