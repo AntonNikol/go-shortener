@@ -17,4 +17,5 @@ type Repository interface {
 	GetItemByID(ctx context.Context, id string) (*models.Item, error)
 	GetItemsByUserID(ctx context.Context, userID string) ([]models.ItemResponse, error)
 	Ping(ctx context.Context) error
+	Delete(ctx context.Context, list []string, userID string) error
 }

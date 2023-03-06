@@ -12,6 +12,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
@@ -61,27 +62,24 @@ func (p Postgres) AddItem(ctx context.Context, item models.Item) (*models.Item, 
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
-			log.Printf("да это ошибка pgerr")
 			//Получаем запись по full_url
-			log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
-			item, err = p.GetItemByFullURL(ctx, item.FullURL)
+			//log.Printf("postgres AddItem получаем запись по полному URL: %v, %v", item, err)
+			var i *models.Item
+			i, err = p.GetItemByFullURL(ctx, item.FullURL)
 			if err != nil {
-				return &item, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
+				return i, fmt.Errorf("failed to retrieve conflicting row in db: %w", repositories.ErrNotFound)
 			}
 
-			return &item, repositories.ErrAlreadyExists
+			return i, repositories.ErrAlreadyExists
 		}
 		return nil, fmt.Errorf("unable insert into table %w", err)
 	}
 
-	log.Printf("postgres AddItem успешно id: %s", id)
-
 	item.ID = shortURL
-	fmt.Printf("возвращаемый item в методе createItem %+v", item)
 	return &item, nil
 }
 
-func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.Item, error) {
+func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (*models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
 		"SELECT short_url,full_url FROM short_links where full_url=$1", fullURL)
 
@@ -89,27 +87,29 @@ func (p Postgres) GetItemByFullURL(ctx context.Context, fullURL string) (models.
 
 	err = row.Scan(&i.ID, &i.FullURL)
 	if err != nil {
-		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
-
-		return models.Item{}, repositories.ErrNotFound
+		//log.Printf("postgres GetItemByID Scan ошибка: %v", err)
+		return nil, repositories.ErrNotFound
 	}
-	return i, nil
+	return &i, nil
 }
 
 func (p Postgres) GetItemByID(ctx context.Context, id string) (*models.Item, error) {
 	row := p.DB.QueryRowContext(ctx,
-		"SELECT short_url,full_url FROM short_links where short_url=$1", id)
+		"SELECT short_url,full_url,is_deleted FROM short_links where short_url=$1", id)
 
 	var i models.Item
+	var s sql.NullBool
 
-	err = row.Scan(&i.ID, &i.FullURL)
+	err = row.Scan(&i.ID, &i.FullURL, &s)
+	if s.Valid {
+		i.IsDeleted = s.Bool
+	}
 	if err != nil {
-		log.Printf("postgres GetItemByID Scan ошибка: %v", err)
-
+		//log.Printf("postgres GetItemByID Scan ошибка: %v", err)
 		return nil, repositories.ErrNotFound
 	}
 
-	log.Printf("postgres GetItemByID Scan успех: %v", i)
+	//log.Printf("postgres GetItemByID Scan успех: %+v", i)
 
 	return &i, nil
 }
@@ -137,7 +137,7 @@ func (p Postgres) GetItemsByUserID(ctx context.Context, userID string) ([]models
 		res = append(res, i)
 	}
 
-	log.Printf("postgres GetItemsByUserID Scan успех: %v", res)
+	//log.Printf("postgres GetItemsByUserID Scan успех: %v", res)
 
 	// проверяем на ошибки
 	err = rows.Err()
@@ -193,4 +193,21 @@ func (p Postgres) AddItemsList(ctx context.Context, items map[string]models.Item
 	}
 
 	return result, nil
+}
+
+func (p Postgres) Delete(ctx context.Context, list []string, userID string) error {
+	ids := &pgtype.VarcharArray{}
+	ids.Set(list)
+
+	res, err := p.DB.Exec("UPDATE short_links SET is_deleted = true WHERE short_url = any ($1) AND user_id= $2", ids, userID)
+	if err != nil {
+		log.Printf("unable update rows: %v", err)
+	}
+	count, err := res.RowsAffected()
+	if err != nil {
+		log.Printf("unable check rows affected: %v", err)
+		return nil
+	}
+	log.Printf("rows updated: %d", count)
+	return nil
 }

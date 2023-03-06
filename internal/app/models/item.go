@@ -1,10 +1,11 @@
 package models
 
 type Item struct {
-	ID       string
-	FullURL  string `json:"url"`
-	ShortURL string `json:"short_url"`
-	UserID   string
+	ID        string
+	FullURL   string `json:"url"`
+	ShortURL  string `json:"short_url"`
+	UserID    string
+	IsDeleted bool
 }
 
 type ItemResponse struct {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/AntonNikol/go-shortener/internal/app/models"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
+	"github.com/AntonNikol/go-shortener/internal/workers"
 	"github.com/AntonNikol/go-shortener/pkg/ctxdata"
 	"github.com/labstack/echo/v4"
 	"io"
@@ -16,16 +17,18 @@ import (
 type Handlers struct {
 	baseURL    string
 	repository repositories.Repository
+	worker     *workers.WorkerPool
 }
 
 const (
 	IntServErr = "Internal Server Error"
 )
 
-func New(baseURL string, repository repositories.Repository) *Handlers {
+func New(baseURL string, repository repositories.Repository, worker *workers.WorkerPool) *Handlers {
 	return &Handlers{
 		baseURL:    baseURL,
 		repository: repository,
+		worker:     worker,
 	}
 }
 
@@ -54,7 +57,7 @@ func (h Handlers) CreateItemHandler(c echo.Context) error {
 	}
 
 	result, err := h.repository.AddItem(c.Request().Context(), item)
-	log.Printf("получен ответ %+v, %v", result, err)
+	//log.Printf("получен ответ %+v, %v", result, err)
 
 	if err != nil && !errors.Is(err, repositories.ErrAlreadyExists) {
 		// а вот пятисотки логгировать как раз надо
@@ -107,6 +110,9 @@ func (h Handlers) GetItemHandler(c echo.Context) error {
 	if errors.Is(err, repositories.ErrNotFound) {
 		return c.String(http.StatusNotFound, "Ссылка не найдена")
 	}
+	if item.IsDeleted {
+		return c.String(http.StatusGone, "")
+	}
 
 	c.Response().Header().Set("Location", item.FullURL)
 	return c.String(http.StatusTemporaryRedirect, "")
@@ -127,8 +133,6 @@ func (h Handlers) GetItemsByUserIDHandler(c echo.Context) error {
 
 	var result []models.ItemResponse
 	for _, v := range items {
-		log.Printf("Подстановка v.ShortURL было: %s", v.ShortURL)
-
 		v.ShortURL = h.baseURL + "/" + v.ID
 		result = append(result, v)
 	}
@@ -152,19 +156,12 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Cookie read err")
 	}
 
-	body, err := io.ReadAll(c.Request().Body)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, IntServErr)
-	}
-	if len(body) == 0 {
-		return c.String(http.StatusBadRequest, "Request body is required")
-	}
-
 	var itemsRequest []models.ItemList
-
-	err = json.Unmarshal(body, &itemsRequest)
-	if err != nil {
-		return c.String(http.StatusBadRequest, IntServErr)
+	if err := json.NewDecoder(c.Request().Body).Decode(&itemsRequest); err != nil {
+		return c.String(http.StatusBadRequest, "unable to unmarshal body")
+	}
+	if len(itemsRequest) == 0 {
+		return c.String(http.StatusBadRequest, "zero urls in the passed list")
 	}
 
 	// Собираем мапу айтемсов
@@ -190,4 +187,29 @@ func (h Handlers) CreateItemsListHandler(c echo.Context) error {
 		response = append(response, r)
 	}
 	return c.JSON(http.StatusCreated, response)
+}
+
+func (h Handlers) DeleteHandler(c echo.Context) error {
+	userID, ok := ctxdata.GetUserID(c.Request().Context())
+	if !ok {
+		return c.String(http.StatusBadRequest, "Cookie read err")
+	}
+
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, IntServErr)
+	}
+	if len(body) == 0 {
+		return c.String(http.StatusBadRequest, "Request body is required")
+	}
+
+	var listIDS []string
+	err = json.Unmarshal(body, &listIDS)
+	if err != nil {
+		return c.String(http.StatusBadRequest, IntServErr)
+	}
+
+	h.worker.Remove(userID, listIDS)
+
+	return c.String(http.StatusAccepted, userID)
 }

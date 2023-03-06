@@ -4,5 +4,6 @@ CREATE TABLE IF NOT EXISTS short_links
     full_url  varchar(255) not null ,
     short_url varchar(255) not null unique,
     user_id   varchar(255),
-    created_at timestamp not null default now()
+    created_at timestamp not null default now(),
+    is_deleted bool
 )

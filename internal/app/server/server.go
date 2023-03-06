@@ -6,18 +6,18 @@ import (
 	"github.com/AntonNikol/go-shortener/internal/app/middlewares"
 	"github.com/AntonNikol/go-shortener/internal/app/repositories"
 	"github.com/AntonNikol/go-shortener/internal/config"
+	"github.com/AntonNikol/go-shortener/internal/workers"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
-//var repo repositories.Repository
-
 func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) {
-
-	h := handlers.New(cfg.BaseURL, repo)
+	worker := workers.NewBatchPostponeRemover(ctx, repo, 10*time.Second, 1000)
+	h := handlers.New(cfg.BaseURL, repo, worker)
 
 	// Routes
 	e := echo.New()
@@ -44,6 +44,7 @@ func Run(ctx context.Context, cfg *config.Config, repo repositories.Repository) 
 	e.GET("/:id", h.GetItemHandler)
 	e.GET("/api/user/urls", h.GetItemsByUserIDHandler)
 	e.GET("/ping", h.DBPingHandler)
+	e.DELETE("/api/user/urls", h.DeleteHandler)
 
 	log.Printf("Сервер запущен на адресе: %s", cfg.ServerAddress)
 
